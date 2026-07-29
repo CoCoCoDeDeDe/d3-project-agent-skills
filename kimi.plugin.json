@@ -1,0 +1,14 @@
+{
+  "name": "d3-project-agent-skills",
+  "version": "0.1.0",
+  "description": "Personal agent skills for a 3D-printing Web CAD project: React 18 + Babylon.js 8 + XState v5 (AWS Lambda backend).",
+  "keywords": ["babylonjs", "xstate", "react", "3d-printing", "cad"],
+  "homepage": "https://github.com/CoCoCoDeDeDe/d3-project-agent-skills",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "D3 Project Agent Skills",
+    "shortDescription": "Babylon.js CAD modeling and XState interaction skills for the D3 web CAD project",
+    "developerName": "CoCoCoDeDeDe"
+  }
+}

@@ -1,0 +1,5 @@
+.DS_Store
+.claude/
+.kimi-code/
+node_modules/
+Thumbs.db
