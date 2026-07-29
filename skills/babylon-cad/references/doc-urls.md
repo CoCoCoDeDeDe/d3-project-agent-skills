@@ -23,13 +23,12 @@ The GitHub source for all docs is at `https://github.com/BabylonJS/Documentation
   - Thin instances: `/features/featuresDeepDive/mesh/copies/thinInstances`
   - Clones: `/features/featuresDeepDive/mesh/copies/clones`
 - Merging: `/features/featuresDeepDive/mesh/mergeMeshes`
-- CSG (legacy): `/features/featuresDeepDive/mesh/copies/csg`
-- CSG2 (Manifold, Babylon 8+): `/features/featuresDeepDive/mesh/copies/csgPart1`
+- CSG / CSG2 (booleans): no official doc page exists — use the typedoc (`CSG2` class) and [procedural-parametric-modeling.md](procedural-parametric-modeling.md)
 - Interactions/picking: `/features/featuresDeepDive/mesh/interactions`
 - Gizmos: `/features/featuresDeepDive/mesh/gizmo`
 - Node Geometry: `/features/featuresDeepDive/mesh/nodeGeometry`
 - Bounding boxes: `/features/featuresDeepDive/mesh/displayBoundingBoxes`
-- Billboard mode: `/features/featuresDeepDive/mesh/billboardMode`
+- Billboard mode: `/features/featuresDeepDive/mesh/billboard`
 - Decals: `/features/featuresDeepDive/mesh/decals`
 - Facet data: `/features/featuresDeepDive/mesh/facetData`
 
@@ -37,25 +36,24 @@ The GitHub source for all docs is at `https://github.com/BabylonJS/Documentation
 - Overview: `/features/featuresDeepDive/materials`
 - Using materials: `/features/featuresDeepDive/materials/using`
   - Introduction: `/features/featuresDeepDive/materials/using/materials_introduction`
-  - PBR: `/features/featuresDeepDive/materials/using/HDREnvironment`
-  - Fresnel: `/features/featuresDeepDive/materials/using/FresnelParameters`
+  - HDR environment: `/features/featuresDeepDive/materials/using/HDREnvironment`
+  - Fresnel: `/features/featuresDeepDive/materials/using/fresnelParameters`
 - Node materials: `/features/featuresDeepDive/materials/node_material`
 - Shaders: `/features/featuresDeepDive/materials/shaders`
-  - Introduction: `/features/featuresDeepDive/materials/shaders/shaderIntro`
+  - Introduction: `/features/featuresDeepDive/materials/shaders/introToShaders`
   - ShaderMaterial: `/features/featuresDeepDive/materials/shaders/shaderMaterial`
 - Advanced: `/features/featuresDeepDive/materials/advanced`
 
 ### Animation
 - Overview: `/features/featuresDeepDive/animation`
 - Introduction: `/features/featuresDeepDive/animation/animation_introduction`
-- Animation groups: `/features/featuresDeepDive/animation/group`
+- Animation groups: `/features/featuresDeepDive/animation/groupAnimations`
 - Advanced: `/features/featuresDeepDive/animation/advanced_animations`
-- Combining: `/features/featuresDeepDive/animation/combining`
+- Combining: `/features/featuresDeepDive/animation/combineAnimations`
 
 ### Cameras
 - Overview: `/features/featuresDeepDive/cameras`
 - Camera introduction: `/features/featuresDeepDive/cameras/camera_introduction`
-- Camera behaviors: `/features/featuresDeepDive/cameras/camera_behaviors`
 - Customizing inputs: `/features/featuresDeepDive/cameras/customizingCameraInputs`
 - Multiview: `/features/featuresDeepDive/cameras/multiViewsPart1`
 
@@ -64,42 +62,37 @@ The GitHub source for all docs is at `https://github.com/BabylonJS/Documentation
 - Introduction: `/features/featuresDeepDive/lights/lights_introduction`
 - Shadows: `/features/featuresDeepDive/lights/shadows`
 - Cascaded shadows: `/features/featuresDeepDive/lights/shadows_csm`
-- Global illumination: `/features/featuresDeepDive/lights/global_illumination`
+- Global illumination (RSM): `/features/featuresDeepDive/lights/rsmgi`
 
 ### GUI
 - 2D GUI: `/features/featuresDeepDive/gui/gui`
 - 3D GUI: `/features/featuresDeepDive/gui/gui3D`
-- HTML GUI: `/features/featuresDeepDive/gui/htmlGui`
-- Dat.GUI: `/features/featuresDeepDive/gui/datGUI`
 
 ### Physics
 - Overview: `/features/featuresDeepDive/physics`
-- Physics V2 (Havok): `/features/featuresDeepDive/physics/usingPhysicsEngine`
-- Aggregates: `/features/featuresDeepDive/physics/aggregates`
-- Constraints/joints: `/features/featuresDeepDive/physics/constraints`
-- Ragdoll: `/features/featuresDeepDive/physics/ragdoll`
-- Legacy V1: `/features/featuresDeepDive/physics/v1`
+- Physics V2 (Havok): `/features/featuresDeepDive/physics/v2/usingPhysicsEngine`
+- Aggregates: `/features/featuresDeepDive/physics/v2/aggregates`
+- Constraints/joints: `/features/featuresDeepDive/physics/v2/constraints`
+- Ragdolls: `/features/featuresDeepDive/physics/v2/ragdolls`
 
 ### Particles
 - Overview: `/features/featuresDeepDive/particles`
 - Particle system: `/features/featuresDeepDive/particles/particle_system`
 - Solid particle system: `/features/featuresDeepDive/particles/solid_particle_system`
 - Points cloud: `/features/featuresDeepDive/particles/point_cloud_system`
-- GPU particles: `/features/featuresDeepDive/particles/gpu_particles`
+- GPU particles: `/features/featuresDeepDive/particles/particle_system/gpu_particles`
 - Fluid rendering: `/features/featuresDeepDive/particles/fluid_renderer`
 
 ### Scene
 - Overview: `/features/featuresDeepDive/scene`
 - Optimization: `/features/featuresDeepDive/scene/optimize_your_scene`
-- Scene ready: `/features/featuresDeepDive/scene/scene_ready`
-- Fast build: `/features/featuresDeepDive/scene/fast_build`
+- Fast build world: `/features/featuresDeepDive/scene/fastBuildWorld`
 
 ### Environment
 - Overview: `/features/featuresDeepDive/environment`
 - Skybox: `/features/featuresDeepDive/environment/environment_introduction`
 - Background: `/features/featuresDeepDive/environment/backgroundMaterial`
-- Fog: `/features/featuresDeepDive/environment/fog`
-- Lens effects: `/features/featuresDeepDive/environment/lensFlare`
+- Lens effects: `/features/featuresDeepDive/environment/lenseFlare`
 
 ### Post Processes
 - Overview: `/features/featuresDeepDive/postProcesses`
