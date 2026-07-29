@@ -180,23 +180,89 @@ scene.createDefaultSkybox(envTex, true, 1000);
 
 ## Node Material
 
-Visual shader editor - create materials without writing GLSL/WGSL:
+Visual shader graph compiled to GLSL/WGSL - no hand-written shader code. Which material to pick:
+
+- **PBRMaterial / StandardMaterial**: default choice when a built-in lighting model is enough - least code, best tooling.
+- **Node Material**: custom effects (gradients, masks, dissolves, UV tricks) that non-programmers should tweak - NME gives live preview and shareable snippets.
+- **ShaderMaterial**: only when you need full manual control (custom attributes, non-standard pipelines); you own all shader code and lighting.
+
+### Approach 1 (recommended): Node Material Editor + snippet
+
+Build the graph visually at https://nme.babylonjs.com/, save it, then load by snippet id:
 
 ```typescript
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 
-// Load from snippet server
-const nodeMat = await NodeMaterial.ParseFromSnippetAsync("snippetId", scene);
-
-// Load from file
-const nodeMat = await NodeMaterial.ParseFromFileAsync("name", "url.json", scene);
-
-// Create programmatically
-const nodeMat = new NodeMaterial("nodeMat", scene);
-// ... add blocks programmatically
-nodeMat.build();
-
+// Pass the snippet id only (from the NME save dialog), NOT the full URL; append "#n" to pin a revision.
+const nodeMat = await NodeMaterial.ParseFromSnippetAsync("2F999G", scene);
 mesh.material = nodeMat;
+
+// Or from a .json graph on your server: NodeMaterial.ParseFromFileAsync("myMat", "materials/myMat.json", scene)
+
+// Runtime-tweak a named uniform input (give the block a name in NME first)
+const tint = nodeMat.getInputBlockByPredicate((b) => b.name === "tintColor");
+if (tint) tint.value = new Color3(1, 0, 0);
+```
+
+### Approach 2: build the graph in code
+
+Verbose and harder to maintain - prefer Approach 1 unless the graph must be generated dynamically. Minimal complete example: grayscale gradient driven by world-space Y:
+
+```typescript
+import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
+import { InputBlock } from "@babylonjs/core/Materials/Node/Blocks/Input/inputBlock";
+import { TransformBlock } from "@babylonjs/core/Materials/Node/Blocks/transformBlock";
+import { VertexOutputBlock } from "@babylonjs/core/Materials/Node/Blocks/Vertex/vertexOutputBlock";
+import { FragmentOutputBlock } from "@babylonjs/core/Materials/Node/Blocks/Fragment/fragmentOutputBlock";
+import { VectorSplitterBlock } from "@babylonjs/core/Materials/Node/Blocks/vectorSplitterBlock";
+import { RemapBlock } from "@babylonjs/core/Materials/Node/Blocks/remapBlock";
+import { NodeMaterialSystemValues } from "@babylonjs/core/Materials/Node/Enums/nodeMaterialSystemValues";
+import { Vector2 } from "@babylonjs/core/Maths/math.vector";
+
+const nodeMat = new NodeMaterial("yGradient", scene);
+
+// Vertex: position -> world -> clip space
+const positionInput = new InputBlock("position");
+positionInput.setAsAttribute("position");
+const worldInput = new InputBlock("world");
+worldInput.setAsSystemValue(NodeMaterialSystemValues.World);
+const worldPos = new TransformBlock("worldPos");
+positionInput.connectTo(worldPos);  // auto-wires .output -> .vector
+worldInput.connectTo(worldPos);     // auto-wires .output -> .transform
+const viewProjection = new InputBlock("viewProjection");
+viewProjection.setAsSystemValue(NodeMaterialSystemValues.ViewProjection);
+const clipPos = new TransformBlock("clipPos");
+worldPos.connectTo(clipPos);
+viewProjection.connectTo(clipPos);
+const vertexOutput = new VertexOutputBlock("vertexOutput");
+clipPos.connectTo(vertexOutput);
+nodeMat.addOutputNode(vertexOutput);
+
+// Fragment: remap world Y into 0..1 grayscale
+const splitter = new VectorSplitterBlock("splitter");
+worldPos.xyz.connectTo(splitter.xyzIn);
+const remap = new RemapBlock("remap");
+remap.sourceRange = new Vector2(0, 10);  // world-Y range of your mesh
+remap.targetRange = new Vector2(0, 1);
+splitter.y.connectTo(remap.input);
+const fragmentOutput = new FragmentOutputBlock("fragmentOutput");
+remap.output.connectTo(fragmentOutput.rgb);
+nodeMat.addOutputNode(fragmentOutput);
+nodeMat.build(true);  // true = log generated shaders to console
+mesh.material = nodeMat;
+```
+
+### Useful API
+
+```typescript
+import { NodeMaterialModes } from "@babylonjs/core/Materials/Node/Enums/nodeMaterialModes";
+
+nodeMat.build();                        // compile graph into shaders; throws on error
+nodeMat.getBlockByName("myBlock");      // any block by its name
+nodeMat.getInputBlocks();               // all InputBlocks (uniform/attribute inputs)
+nodeMat.attachedBlocks;                 // every block in the graph
+nodeMat.mode = NodeMaterialModes.Material;  // default; also .PostProcess, .Particle, .ProceduralTexture
 ```
 
 Node Material Editor (NME): https://nme.babylonjs.com/
