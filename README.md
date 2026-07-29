@@ -35,6 +35,8 @@ d3-project-agent-skills/
 ├── README.md
 ├── LICENSE                  # MIT
 ├── kimi.plugin.json
+├── scripts/
+│   └── check-doc-urls.sh      # doc-urls.md 死链校验(只需 bash + curl)
 └── skills/
     ├── babylon-cad/
     │   ├── SKILL.md
