@@ -143,6 +143,14 @@ Gizmos, highlight layers, and utility meshes created in `entry` MUST be disposed
 - Event names are past-tense facts (`POINTER_DOWN`, `PART_PLACED`), not commands (`handleClick`).
 - Guards are pure (context + event only). Any function touching `scene`, DOM, or time is an action or an invoked actor.
 
+## Reference Files
+
+Read these files for detailed patterns on specific topics:
+
+- **[testing.md](references/testing.md)** - Unit & async testing of machines and actors: `createActor` + `getSnapshot` assertions, `waitFor`, `SimulatedClock` for `after`/delays, mocking invoked actors via `machine.provide`, and `fromCallback`/Babylon observer tests. **Read this when writing or fixing tests for any machine.**
+- **[parallel-states.md](references/parallel-states.md)** - `type: "parallel"` regions, event broadcast, cross-region coordination via context mirrors and `raise`, `onDone` joins, and the parallel-state vs. separate-actor decision rules. **Read this before modeling selection/drag/camera as parallel regions.**
+- **[actor-supervision.md](references/actor-supervision.md)** - v5 error handling without Akka-style supervisors: `invoke` `onError` (`xstate.error.actor.*` events), capped retries with exponential backoff, `stopChild` lifecycle and context-ref cleanup, rebuilding crashed actors in React, isolating Babylon observer actors. **Read this when handling failures, retries, or child actor crashes.**
+
 ## AI Mistake Checklist (verify before finishing)
 
 1. No `interpret`, no `.withConfig`, no v4 `assign((context) => ...)` function form.
