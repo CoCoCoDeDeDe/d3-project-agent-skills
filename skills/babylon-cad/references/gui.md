@@ -4,6 +4,7 @@
 - [Setup](#setup)
 - [AdvancedDynamicTexture](#advanceddynamictexture)
 - [Controls](#controls)
+- [3D GUI](#3d-gui)
 - [Containers](#containers)
 - [Layout & Sizing](#layout--sizing)
 - [Events](#events)
@@ -119,6 +120,134 @@ input.background = "#333";
 input.placeholderText = "Enter text...";
 input.onTextChangedObservable.add((ev) => { /* ev.text */ });
 ```
+
+### RadioButton
+```typescript
+import { RadioButton } from "@babylonjs/gui/2D/controls/radioButton";
+
+const radio = new RadioButton("radio");
+radio.width = "20px";
+radio.height = "20px";
+radio.color = "green";
+radio.group = "options";  // radios sharing a group are mutually exclusive
+radio.isChecked = true;
+radio.onIsCheckedChangedObservable.add((value) => { /* handle */ });
+gui.addControl(radio);
+```
+
+### ColorPicker
+```typescript
+import { ColorPicker } from "@babylonjs/gui/2D/controls/colorpicker";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+
+const picker = new ColorPicker("picker");
+picker.width = "300px";
+picker.height = "300px";
+picker.value = Color3.Red();  // value is a Color3
+picker.onValueChangedObservable.add((value) => { /* value: Color3 */ });
+gui.addControl(picker);
+```
+
+### Ellipse
+```typescript
+import { Ellipse } from "@babylonjs/gui/2D/controls/ellipse";
+
+const ellipse = new Ellipse("ellipse");
+ellipse.width = "100px";
+ellipse.height = "60px";
+ellipse.color = "white";       // border color
+ellipse.background = "#333";   // fill color
+ellipse.thickness = 2;
+ellipse.arc = 1;               // 0-1, ratio of the circumference to draw
+ellipse.addControl(childControl);  // Ellipse is a Container
+gui.addControl(ellipse);
+```
+
+### Line
+```typescript
+import { Line } from "@babylonjs/gui/2D/controls/line";
+
+const line = new Line("line");
+line.x1 = 10;
+line.y1 = 10;
+line.x2 = "200px";
+line.y2 = "200px";
+line.lineWidth = 2;
+line.color = "white";
+line.dash = [5, 5];                  // optional dash pattern
+// line.connectedControl = target;   // stick the line end to another control
+gui.addControl(line);
+```
+
+### InputTextArea
+```typescript
+import { InputTextArea } from "@babylonjs/gui/2D/controls/inputTextArea";
+
+// Multi-line InputText
+const area = new InputTextArea("area", "Initial text");
+area.width = "300px";
+area.height = "120px";
+area.color = "white";
+area.background = "#333";
+area.placeholderText = "Enter multiple lines...";
+area.onTextChangedObservable.add((ev) => { /* ev.text */ });
+gui.addControl(area);
+```
+
+### VirtualKeyboard
+```typescript
+import { VirtualKeyboard } from "@babylonjs/gui/2D/controls/virtualKeyboard";
+
+const keyboard = VirtualKeyboard.CreateDefaultLayout("keyboard");
+keyboard.connect(input);  // writes into the InputText / InputTextArea while it has focus
+gui.addControl(keyboard);
+
+// Note: on mobile the native OS keyboard may still pop up on focus;
+// the virtual keyboard is most useful for canvas-only or XR contexts
+```
+
+## 3D GUI
+
+In-scene 3D controls, designed mainly for XR / near interaction.
+For regular 2D HUD overlays, prefer AdvancedDynamicTexture above — it is cheaper and easier to lay out.
+
+### GUI3DManager
+```typescript
+import { GUI3DManager } from "@babylonjs/gui/3D/gui3DManager";
+
+// Controls are rendered in a utility layer scene drawn on top of the main scene
+const manager = new GUI3DManager(scene);
+```
+
+### Button3D / HolographicButton
+```typescript
+import { Button3D } from "@babylonjs/gui/3D/controls/button3D";
+import { HolographicButton } from "@babylonjs/gui/3D/controls/holographicButton";
+import { TextBlock } from "@babylonjs/gui/2D/controls/textBlock";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+
+// Plain 3D button (options: { width, height, depth })
+const btn = new Button3D("btn");
+btn.position = new Vector3(0, 1.5, 2);
+btn.onPointerClickObservable.add(() => { /* handle click */ });
+manager.addControl(btn);
+
+// Any 2D control can be projected onto the button face
+const label = new TextBlock("label", "Click Me");
+label.color = "white";
+label.fontSize = 48;
+btn.content = label;
+
+// Prebuilt holographic look: back plate + text/image
+const holo = new HolographicButton("holo");
+holo.text = "Reset";
+holo.imageUrl = "icon.png";
+holo.position = new Vector3(0.6, 1.5, 2);
+manager.addControl(holo);
+```
+
+### Controls and meshes
+`Control3D` is **not** a Mesh subclass: it wraps a `TransformNode` (`control.node`) that you can `position` / `scaling` in world space, and it must live under a `GUI3DManager` (or a `Container3D` via `control.parent`). The manager renders all 3D controls inside its utility layer (`manager.utilityLayer`), so they always draw on top of the main scene.
 
 ## Containers
 
