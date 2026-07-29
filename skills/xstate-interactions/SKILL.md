@@ -1,6 +1,6 @@
 ---
 name: xstate-interactions
-description: "XState v5 state machines and actor model for production apps, especially orchestrating Babylon.js 3D interactions in React. Use when working with XState, state machines, statecharts, actors, @xstate/react (useActor/useActorRef/useSelector), createMachine, setup(), assign, fromPromise, fromCallback, fromObservable, spawnChild, or when wiring XState to imperative APIs like Babylon observables. Covers v5-only patterns, React integration rules, and the Babylon-interaction actor pattern."
+description: "Web CAD 项目:XState v5 state machines and actor model for production apps, especially orchestrating Babylon.js 3D interactions in React. Use when working with XState, state machines, statecharts, actors, @xstate/react (useActor/useActorRef/useSelector), createMachine, setup(), assign, fromPromise, fromCallback, fromObservable, spawnChild, or when wiring XState to imperative APIs like Babylon observables. Covers v5-only patterns, React integration rules, and the Babylon-interaction actor pattern."
 ---
 
 # XState v5
@@ -12,7 +12,7 @@ This project uses **XState v5**. AI training data is flooded with v4 examples �
 - ❌ `interpret(machine).start()` → ✅ `createActor(machine).start()`
 - ❌ `machine.withContext(...)` / `machine.withConfig(...)` → ✅ `setup({ ... }).createMachine({ ... })`
 - ❌ `assign({ count: (context) => context.count + 1 })` → ✅ `assign({ count: ({ context }) => context.count + 1 })` (destructured object arg)
-- ❌ `state.context` / `state.matches` on every frame → ✅ `actor.getSnapshot()`, and in React `useSelector`
+- ❌ `state.context` / `state.matches` on every frame → ✅ `actor.getSnapshot()` for one-off reads; in React subscribe with `useSelector` (never poll per frame)
 - ❌ `send` in machine options → ✅ actions receive `{ self, system }`; use `enqueueActions` for multi-action logic
 - ❌ `services` → ✅ `actors`; `invoke: { src: promiseFn }` → ✅ `invoke: { src: fromPromise(...) }`
 
@@ -101,6 +101,7 @@ const cadInteractionMachine = setup({
 }).createMachine({
   id: "cadInteraction",
   initial: "idle",
+  // Sketch only: fill in real context/guards; getScene is your app's own scene accessor, not an XState API
   invoke: { src: "pointerSource", input: ({ system }) => ({ scene: getScene(system) }) },
   states: {
     idle: {

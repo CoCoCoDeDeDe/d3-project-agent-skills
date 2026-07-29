@@ -5,6 +5,8 @@ description: "Babylon.js 8 3D engine development expertise with curated API patt
 
 # Babylon.js 8
 
+> Adapted from [Curiosity-Ai-BV/Babylonjs-Skill](https://github.com/Curiosity-Ai-BV/Babylonjs-Skill) (MIT).
+
 ## Quick Reference
 
 Babylon.js is a powerful open-source 3D engine for the web. Version 8 supports WebGL2 and WebGPU.
@@ -118,9 +120,9 @@ Read these files for detailed API patterns on specific topics:
 
 - **[core-concepts.md](references/core-concepts.md)** - Engine/Scene setup, cameras, lights, shadows, observables, coordinate system
 - **[meshes.md](references/meshes.md)** - Mesh builders, transforms, TransformNode, instances, thin instances, clones, merging, picking
-- **[procedural-parametric-modeling.md](references/procedural-parametric-modeling.md)** - Building high-quality 3D models in code from primitives. Full primitive catalog (lathe, tube, extrude, polyhedra, geodesics, CSG2 booleans, custom VertexData), quality techniques (tessellation, bevels, edges, material palettes), and a complete animation-ready parent/pivot hierarchy pattern with a worked robot-arm example. **Read this when asked to build any non-trivial model in code or when a model will need to animate.**
+- **[procedural-parametric-modeling.md](references/procedural-parametric-modeling.md)** - Building high-quality 3D models in code from primitives. Full primitive catalog (lathe, tube, extrude, polyhedra, geodesics, CSG2 booleans, custom VertexData), quality techniques (tessellation, bevels, edges, material palettes), and a complete animation-ready parent/pivot hierarchy pattern with a worked composite-factory example (parametric carrier with lift and fork handles). **Read this when asked to build any non-trivial model in code or when a model will need to animate.**
 - **[materials.md](references/materials.md)** - PBR, Standard, textures, environment/HDR, Node Material, Shader Material
-- **[gui.md](references/gui.md)** - AdvancedDynamicTexture, all control types, containers, layout, events
+- **[gui.md](references/gui.md)** - AdvancedDynamicTexture (2D GUI), common control types, containers, layout, events. 3D GUI (GUI3DManager) and less common controls (RadioButton, ColorPicker, VirtualKeyboard) are not covered — fetch from live docs
 - **[animation-loading.md](references/animation-loading.md)** - Animation API, groups, easing, skeletal animation, asset loading, AssetContainer
 - **[performance.md](references/performance.md)** - Scene/mesh/material optimization, instancing strategy comparison, monitoring, memory management
 - **[react-integration.md](references/react-integration.md)** - Engine/scene lifecycle inside React components, dispose discipline on unmount, StrictMode double-mount guard, render-loop ownership, refs-vs-state rules for Babylon objects. **Read this whenever Babylon code lives inside a React app.**

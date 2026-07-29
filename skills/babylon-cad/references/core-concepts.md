@@ -86,6 +86,7 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 
 // Ambient-like light
 const hemi = new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);

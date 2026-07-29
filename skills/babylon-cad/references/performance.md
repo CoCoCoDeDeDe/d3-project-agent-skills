@@ -82,7 +82,7 @@ material.maxSimultaneousLights = 4; // default is 4
 // Use texture LOD
 texture.lodGenerationScale = 0.5;
 
-// Prefer PBRMaterial over StandardMaterial for quality/perf ratio
+// Prefer StandardMaterial over PBRMaterial when photorealism isn't needed — PBR costs more per pixel
 ```
 
 ## Rendering Optimizations

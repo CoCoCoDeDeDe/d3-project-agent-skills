@@ -125,6 +125,8 @@ anim.setEasingFunction(ease);
 glTF models often include skeletal animations loaded as AnimationGroups:
 
 ```typescript
+import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader";
+
 const result = await ImportMeshAsync("model.glb", scene);
 const animGroups = result.animationGroups;
 
@@ -145,25 +147,27 @@ animGroups[1].setWeightForAllAnimatables(0.5);
 ### Modern API (Babylon.js 6+)
 
 ```typescript
+import { AppendSceneAsync, ImportMeshAsync, LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
+
 // Load and add to scene
-await BABYLON.AppendSceneAsync("model.glb", scene);
+await AppendSceneAsync("model.glb", scene);
 
 // Load into container (inspect before adding)
-const container = await BABYLON.LoadAssetContainerAsync("model.glb", scene);
+const container = await LoadAssetContainerAsync("model.glb", scene);
 container.addAllToScene();
 
 // Load meshes only
-const result = await BABYLON.ImportMeshAsync("model.glb", scene);
+const result = await ImportMeshAsync("model.glb", scene);
 // result.meshes, result.skeletons, result.animationGroups, etc.
 
 // Load from URL with root
-const container = await BABYLON.LoadAssetContainerAsync(
+const container = await LoadAssetContainerAsync(
   "https://example.com/models/model.glb",
   scene
 );
 
 // Load from base64
-await BABYLON.AppendSceneAsync("data:;base64,ENCODED_DATA", scene);
+await AppendSceneAsync("data:;base64,ENCODED_DATA", scene);
 ```
 
 ### Loader Registration (for tree-shaking)
@@ -196,7 +200,7 @@ SceneLoader.OnPluginActivatedObservable.add((plugin) => {
 });
 
 // Progress callback
-const container = await BABYLON.LoadAssetContainerAsync("model.glb", scene, {
+const container = await LoadAssetContainerAsync("model.glb", scene, {
   onProgress: (event) => {
     const pct = event.lengthComputable ? (event.loaded / event.total * 100) : 0;
   }
@@ -206,7 +210,7 @@ const container = await BABYLON.LoadAssetContainerAsync("model.glb", scene, {
 ## AssetContainer
 
 ```typescript
-const container = await BABYLON.LoadAssetContainerAsync("model.glb", scene);
+const container = await LoadAssetContainerAsync("model.glb", scene);
 
 // Inspect contents
 container.meshes;          // AbstractMesh[]
@@ -245,5 +249,5 @@ const json = SceneSerializer.Serialize(scene);
 const meshJson = SceneSerializer.SerializeMesh(mesh);
 
 // Load from serialized data
-BABYLON.SceneLoader.Load("", "data:" + JSON.stringify(json), engine);
+SceneLoader.Load("", "data:" + JSON.stringify(json), engine);
 ```

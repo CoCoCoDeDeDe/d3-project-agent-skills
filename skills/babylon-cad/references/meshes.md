@@ -27,7 +27,7 @@ import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder";
 import { CreateTube } from "@babylonjs/core/Meshes/Builders/tubeBuilder";
 import { CreateDisc } from "@babylonjs/core/Meshes/Builders/discBuilder";
 import { CreateTorus } from "@babylonjs/core/Meshes/Builders/torusBuilder";
-import { CreatePolygon } from "@babylonjs/core/Meshes/Builders/polygonBuilder";
+import { CreatePolygon, ExtrudePolygon } from "@babylonjs/core/Meshes/Builders/polygonBuilder";
 
 // Box
 CreateBox("box", { width: 2, height: 1, depth: 3 }, scene);
@@ -50,8 +50,10 @@ CreateTube("tube", { path: [v1, v2, v3], radius: 0.5, tessellation: 16 }, scene)
 // Disc
 CreateDisc("disc", { radius: 2, tessellation: 64 }, scene);
 
-// Polygon (requires earcut)
-CreatePolygon("polygon", { shape: [v1, v2, v3, v4], depth: 1 }, scene, earcut);
+// Polygon (flat; requires earcut)
+CreatePolygon("polygon", { shape: [v1, v2, v3, v4] }, scene, earcut);
+// Extruded polygon (solid with thickness; requires earcut)
+ExtrudePolygon("prism", { shape: [v1, v2, v3, v4], depth: 1 }, scene, earcut);
 
 // Capsule
 MeshBuilder.CreateCapsule("capsule", { height: 2, radius: 0.5 }, scene);
@@ -221,7 +223,7 @@ const merged = Mesh.MergeMeshes(
 );
 ```
 
-For composing many primitives into a reusable **parametric template** (a shuttle, a chassis, a lipped post — anything that varies by size and repeats hundreds to millions of times), see **[parametric-factories.md](parametric-factories.md)**. It covers PROPORTIONS tables, `Dims`, shared material factories, `ExtrudePolygon` for non-box cross-sections, template caching, and thin-instance templates.
+For composing many primitives into a reusable **parametric template** (a shuttle, a chassis, a lipped post — anything that varies by size and repeats hundreds to millions of times), see **[procedural-parametric-modeling.md](procedural-parametric-modeling.md)**. It covers PROPORTIONS tables, `Dims`, shared material factories, `ExtrudePolygon` for non-box cross-sections, template caching, and thin-instance templates.
 
 ## Picking & Raycasting
 
