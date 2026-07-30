@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin manifest and skill frontmatter
+        run: |
+          python3 - <<'EOF'
+          import json, re, os
+
+          m = json.load(open('kimi.plugin.json'))
+          assert re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,63}', m['name']), f"bad plugin name: {m['name']}"
+          assert m.get('version'), 'missing version'
+
+          skills = m.get('skills')
+          for p in ([skills] if isinstance(skills, str) else (skills or [])):
+              assert os.path.isdir(p), f'skills path missing: {p}'
+
+          for d in sorted(os.listdir('skills')):
+              f = os.path.join('skills', d, 'SKILL.md')
+              assert os.path.isfile(f), f'missing {f}'
+              head = open(f, encoding='utf-8').read(600)
+              assert head.startswith('---'), f'{f}: no frontmatter'
+              assert f'name: {d}' in head, f'{f}: frontmatter name != dir name {d}'
+              assert 'description:' in head, f'{f}: missing description'
+
+          print(f"OK: manifest valid, {len(os.listdir('skills'))} skills checked")
+          EOF
+
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: LICENSE exists and is MIT
+        run: |
+          test -f LICENSE
+          head -1 LICENSE | grep -q "MIT License"
+          echo "OK: MIT LICENSE present"
+
+      - name: babylon-cad attribution to upstream source
+        # 合规底线:该 skill 基于 Curiosity-Ai-BV/Babylonjs-Skill(自称 MIT 但无 LICENSE)
+        # 改造,正文顶部必须保留出处标注
+        run: |
+          grep -q "Curiosity-Ai-BV/Babylonjs-Skill" skills/babylon-cad/SKILL.md
+          echo "OK: attribution present"
