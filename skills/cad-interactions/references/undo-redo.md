@@ -45,7 +45,7 @@ Design points, in order of how often they are gotten wrong:
 
 - **Two stacks, not one list with a cursor.** `past`/`future` makes the "new command kills redo history" rule one line (`future.length = 0`). Cursor-based lists get this wrong under merge.
 - **`push` executes; `pushExecuted` does not.** Pick the wrong one and the command either runs twice (push after a gizmo already moved the mesh — visible as a double-offset) or never runs (pushExecuted for a button click — the button appears dead).
-- **`merge` absorbs consecutive commands.** The absorbing command updates its own `to` state from `previous` and the stack stays one entry shorter. Without it, one 3-second gizmo drag produces hundreds of undo steps.
+- **`merge` absorbs consecutive commands.** When the new command's `merge(top)` returns true, the existing stack-top command absorbs the new end state (keeps its original `from`, takes the newest `to` — see the example below) and no new entry is pushed. Without it, one 3-second gizmo drag produces hundreds of undo steps.
 
 ## Commands Store Ids, Not References
 
@@ -99,7 +99,7 @@ merge(previous: Command): boolean {
 }
 ```
 
-(`to` must be writable for this — drop `readonly` on that field when merging is needed, and re-apply in the stack: the absorbed command's execute keeps the newest value. Note the `push` path above calls `cmd.execute()` after absorbing so the new `to` still lands.)
+(`to` must be writable on the stack-top command for this — drop `readonly` on that field when merging is needed. In the `push` path the stack still calls `cmd.execute()` after a successful merge, so the newest value is applied; in `pushExecuted` nothing runs, because the scene is already at the newest state.)
 
 ## XState Bridge: Events Are Commands
 
