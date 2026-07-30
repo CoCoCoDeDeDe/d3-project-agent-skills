@@ -5,7 +5,7 @@ description: Create new skills, modify and improve existing skills, and measure 
 
 # Skill Creator
 
-> Adapted from [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/skill-creator) (MIT).
+> Adapted from [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/skill-creator) (Apache-2.0, see LICENSE.txt).
 
 A skill for creating new skills and iteratively improving them.
 

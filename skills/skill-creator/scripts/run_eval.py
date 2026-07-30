@@ -99,15 +99,40 @@ def run_single_query(
         if model:
             cmd.extend(["-m", model])
 
+        # stderr goes to a temp file (not DEVNULL) so a failed launch — bad
+        # model alias, auth error, rate limit — leaves a diagnosable trace.
+        # Otherwise those failures are indistinguishable from a genuine
+        # "skill did not trigger" and silently pollute the trigger rate.
+        err_file = tempfile.TemporaryFile()
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=err_file,
             cwd=tmpdir,
         )
 
+        def warn_on_failure() -> None:
+            if process.returncode not in (None, 0):
+                err_file.seek(0)
+                err = err_file.read().decode("utf-8", errors="replace").strip()
+                print(
+                    f"Warning: kimi -p exited {process.returncode} "
+                    f"(counted as not-triggered): {err[:300]}",
+                    file=sys.stderr,
+                )
+
+        def flush_buffer(buffer: str) -> bool | None:
+            """Decision from any complete lines left in buffer, else final line."""
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                decision = _decide_from_line(line, skill_name)
+                if decision is not None:
+                    return decision
+            return _decide_from_line(buffer, skill_name)
+
         start_time = time.time()
         buffer = ""
+        killed = False
 
         try:
             while time.time() - start_time < timeout:
@@ -115,13 +140,7 @@ def run_single_query(
                     remaining = process.stdout.read()
                     if remaining:
                         buffer += remaining.decode("utf-8", errors="replace")
-                    # Flush any lines left in the buffer before giving up
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        decision = _decide_from_line(line, skill_name)
-                        if decision is not None:
-                            return decision
-                    decision = _decide_from_line(buffer, skill_name)
+                    decision = flush_buffer(buffer)
                     if decision is not None:
                         return decision
                     # Process ended without any tool call
@@ -133,6 +152,11 @@ def run_single_query(
 
                 chunk = os.read(process.stdout.fileno(), 8192)
                 if not chunk:
+                    # EOF: flush before giving up — the deciding line may sit
+                    # in the buffer without a trailing newline
+                    decision = flush_buffer(buffer)
+                    if decision is not None:
+                        return decision
                     break
                 buffer += chunk.decode("utf-8", errors="replace")
 
@@ -146,6 +170,13 @@ def run_single_query(
             if process.poll() is None:
                 process.kill()
                 process.wait()
+                killed = True
+            # Surface launch failures (bad model, auth, rate limit) on every
+            # path where we didn't kill the process ourselves. Runs killed
+            # after a decision or a timeout are expected outcomes, not errors.
+            if not killed:
+                warn_on_failure()
+            err_file.close()
 
         return False
 
@@ -228,7 +259,7 @@ def main():
     parser.add_argument("--eval-set", required=True, help="Path to eval set JSON file")
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")
     parser.add_argument("--description", default=None, help="Override description to test")
-    parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers")
+    parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers (each runs a `kimi -p`; lower this if you hit model rate limits)")
     parser.add_argument("--timeout", type=int, default=60, help="Timeout per query in seconds")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")

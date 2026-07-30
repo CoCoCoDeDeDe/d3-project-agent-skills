@@ -194,16 +194,24 @@ def run_loop(
             {k: v for k, v in h.items() if not k.startswith("test_")}
             for h in history
         ]
-        new_description = improve_description(
-            skill_name=name,
-            skill_content=content,
-            current_description=current_description,
-            eval_results=train_results,
-            history=blinded_history,
-            model=model,
-            log_dir=log_dir,
-            iteration=iteration,
-        )
+        try:
+            new_description = improve_description(
+                skill_name=name,
+                skill_content=content,
+                current_description=current_description,
+                eval_results=train_results,
+                history=blinded_history,
+                model=model,
+                log_dir=log_dir,
+                iteration=iteration,
+            )
+        except Exception as e:
+            # A failed improvement call (kimi non-zero exit, timeout, argv
+            # too long) should not kill the whole loop and lose the history
+            # already gathered — keep the current best and stop here.
+            exit_reason = f"improvement_failed (iteration {iteration}): {e}"
+            print(f"\nImprovement call failed, stopping with current best: {e}", file=sys.stderr)
+            break
         improve_elapsed = time.time() - t0
 
         if verbose:
@@ -244,7 +252,7 @@ def main():
     parser.add_argument("--eval-set", required=True, help="Path to eval set JSON file")
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")
     parser.add_argument("--description", default=None, help="Override starting description")
-    parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers")
+    parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers (each runs a `kimi -p`; lower this if you hit model rate limits)")
     parser.add_argument("--timeout", type=int, default=60, help="Timeout per query in seconds")
     parser.add_argument("--max-iterations", type=int, default=5, help="Max improvement iterations")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")

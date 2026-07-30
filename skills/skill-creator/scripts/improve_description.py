@@ -20,8 +20,19 @@ def _call_kimi(prompt: str, model: str | None, timeout: int = 300) -> str:
     """Run `kimi -p` with the prompt as an argument and return the text response.
 
     The prompt goes on argv; `kimi -p` prints the assistant's text reply to
-    stdout by default, so no --output-format flag is needed.
+    stdout by default, so no --output-format flag is needed. kimi -p does not
+    read the prompt from stdin, so argv is the only channel — guard against
+    the Linux per-argument limit (MAX_ARG_STRLEN, 128 KiB) so an oversized
+    prompt fails with a clear message instead of a raw E2BIG OSError.
     """
+    prompt_bytes = len(prompt.encode("utf-8"))
+    if prompt_bytes > 100_000:
+        raise RuntimeError(
+            f"prompt is {prompt_bytes} bytes, too large for a single argv "
+            "value (Linux caps one argument at 128 KiB). The skill content "
+            "and/or iteration history embedded in the prompt is too large — "
+            "shorten the skill body or reduce history before retrying."
+        )
     cmd = ["kimi", "-p", prompt]
     if model:
         cmd.extend(["-m", model])
