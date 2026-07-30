@@ -178,6 +178,8 @@ scene.createDefaultEnvironment();
 scene.createDefaultSkybox(envTex, true, 1000);
 ```
 
+For tone mapping, exposure, and texture color spaces (the "model is black / washed out" half of the pipeline), see [rendering-color-management.md](rendering-color-management.md).
+
 ## Node Material
 
 Visual shader graph compiled to GLSL/WGSL - no hand-written shader code. Which material to pick:
