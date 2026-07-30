@@ -43,7 +43,8 @@ d3-project-agent-skills/
     │   ├── SKILL.md
     │   └── references/
     ├── xstate-interactions/
-    │   └── SKILL.md
+    │   ├── SKILL.md
+    │   └── references/
     └── xstate-studio-sync-workflow/
         └── SKILL.md
 ```
