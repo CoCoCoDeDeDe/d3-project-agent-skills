@@ -141,6 +141,28 @@ test("observer events reach the machine; cleanup on stop", () => {
 
 The `@xstate/test` package is deprecated; model-based testing utilities now live in `xstate/graph` (auto-generating paths through a machine). Reach for it only when hand-written tests can't cover the path space — fetch `https://stately.ai/docs/testing` before using it, and keep the rest of the suite on the patterns above.
 
+## Refactor-resistant assertions (state-machine designs iterate)
+
+Machines under active design get restructured often — regions renamed, states moved, new parallel regions added. Full state-value equality makes every such edit rewrite the whole suite for zero behavioral signal. Two rules keep the suite stable:
+
+**1. Assert subsets, never the whole state value.** `snapshot.matches(partialValue)` does subset matching on parallel state values — unmentioned regions are not compared. One test case asserts only the dimension its name claims:
+
+```typescript
+// ❌ brittle: breaks when ANY region is renamed/restructured, even ones irrelevant to this test
+expect(actor.getSnapshot().value).toEqual({ selection: { selecting: "dragging" }, tool: "closed", loading: "inactive" });
+// ✅ stable: only the drag dimension is this test's business
+expect(actor.getSnapshot().matches({ selection: { selecting: "dragging" } })).toBe(true);
+// ✅ context flags are often the real contract anyway
+expect(actor.getSnapshot().context.toolOpen).toBe(false);
+```
+
+**2. Split the suite into contract tests vs. structural tests — and thin the structural ones.**
+
+- **Contract tests** encode agreed semantic rules ("loading blocks all editing", "no drag while a tool is open", "no undo mid-drag"). They must survive any restructuring untouched (except path renames) — they are the actual asset.
+- **Structural tests** ("event X lands in state Y") are scaffolding. Keep 1–2 representative cases per semantic rule, not one per state/branch — 12 tool states with identical behavior is one case, not twelve.
+
+**Process rule:** while the design is still being iterated (diagram/Studio phase), verify in the diagram's simulation and do **not** keep re-syncing implementation tests. Write/adjust the suite once, at design freeze. The cost of detailed tests is front-loaded design churn, not the detail itself.
+
 ## Checklist
 
 1. No `interpret(...)` anywhere in tests — always `createActor(machine).start()`.
@@ -148,3 +170,5 @@ The `@xstate/test` package is deprecated; model-based testing utilities now live
 3. `after`/delay tests use `SimulatedClock`, never real time.
 4. Invoked actors mocked via `setup` string `src` + `machine.provide`, not by editing the machine file.
 5. Every `fromCallback` test asserts cleanup ran after `actor.stop()`.
+6. Parallel-machine assertions use `matches(partialValue)` subset matching — one case asserts only the dimension it names; no full state-value `toEqual`.
+7. Contract tests (semantic rules) kept intact across restructures; structural tests thinned to 1–2 representative cases per rule.
