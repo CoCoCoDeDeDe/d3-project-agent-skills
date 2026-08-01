@@ -138,10 +138,61 @@ actor.getSnapshot().value; // { interaction: "idle", camera: "free" }
 ```
 
 Note `selectedId` survives the drag (`context` outlives region states) — exit only clears the `isDragging` flag.
+
+## Blocking events across regions (the swallow-edge trap)
+
+A targetless "swallow" transition (`EVENT: {}`) only works **within one region**: a child's swallow shadows the parent's handler for that event. It does **not** stop other regions — broadcast means every region sees the event independently.
+
+❌ The classic breakage: in a non-parallel machine, `dragging` swallows `SELECT_TOOL` to block tool-switching mid-drag. After splitting tools into a parallel `tool` region, that swallow is dead config — the tool region still receives `SELECT_TOOL` and acts on it.
+
+✅ Cross-region blocking = mirror-bit guard on the **handling** region's transition, never a swallow in the other region:
+
+```typescript
+// tool region root: ordered guard chain, first match wins
+SELECT_TOOL: [
+  { guard: ({ context }) => context.isLoading },   // swallow: blocked during loading
+  { guard: ({ context }) => context.isDragging },  // swallow: blocked mid-drag (replaces the old swallow edge)
+  { target: "#machine.tool.closed", guard: "isCloseTool" },
+  { target: "#machine.tool.orientation", guard: "canOpenOrientation" },
+  // ...
+],
+```
+
+### Register shared handlers once at the region root
+
+A transition declared on a region (or any compound state) applies to **all** its child states via bubbling. Register `SELECT_TOOL` once on the tool region — never duplicate the same guarded chain on `closed` + 12 tool states. One place to edit, zero risk of forgetting one child.
+
+### Mirror bits: two assigns, not N
+
+To mirror "region is in any active state vs. the one inactive state", put `entry`/`exit` assigns on the **single inactive state only** — every path in/out crosses it:
+
+```typescript
+// tool region: 1 closed state + 12 tool states
+closed: {
+  entry: assign({ toolOpen: false }), // machine start + any tool → closed
+  exit: assign({ toolOpen: true }),   // closed → any tool; tool→tool keeps it true
+},
+```
+
+Not `entry: assign({ toolOpen: true })` on 12 tool states — 12 places to forget, silent desync when one is missed.
+
+### Global shortcuts live at the machine root
+
+Shortcuts that must work regardless of region state (undo/redo) go on the machine root's `on`, with mirror bits replicating any old swallow semantics:
+
+```typescript
+// root on: { KEY_DOWN: [{ guard: "undoShortcut", actions: "undo" }] }
+// undoShortcut guard: ... && !context.isLoading && !context.isDragging
+// (the dragging state's old KEY_DOWN swallow is replaced by the guard)
+```
+
 ## Checklist
 
 1. `type: "parallel"` on the parent; regions never transition into each other.
 2. State value is an object — asserts and `useSelector` handle `{ region: state }` shape.
 3. Cross-region reads go through context mirrors written in `entry`/`exit`, never attempts to read region state from guards.
-4. `onDone` used (not manual event counting) when all regions must reach final states.
-5. Concerns with independent lifecycles or failure domains are separate actors, not regions.
+4. Cross-region *blocking* also goes through mirror-bit guards on the handling region's chain — swallow edges (`EVENT: {}`) only shadow handlers within their own region, never stop a broadcast to sibling regions.
+5. Shared handlers registered once at the region root (bubbling covers all children), never duplicated per child state.
+6. Mirror an "active vs. inactive" region fact with `entry`/`exit` on the single inactive state, not `entry` on every active state.
+7. `onDone` used (not manual event counting) when all regions must reach final states.
+8. Concerns with independent lifecycles or failure domains are separate actors, not regions.
