@@ -33,6 +33,24 @@ npx prettier --check src --ignore-unknown
 - Keep *why* comments: design rationale, gotchas and their root causes, 2.0 references with `file:line`, non-obvious parameter semantics/units, architecture conventions.
 - Delete *what* comments that restate the code, decorative section dividers, and stale comments describing removed behavior.
 
+## No magic strings: enums and shared constants
+
+Any string/number literal that carries **semantic meaning** (state ids, kind tags, machine state names, config keys) must not be written inline — a literal scattered across files has no rename safety, no typo protection, and no single source of truth. Two remedies by shape (both reviewer-enforced):
+
+- **Closed value set** (states, kinds, ids, modes) → `enum`, never string-literal union types (RWC-4719 review, applied across RWC-4754 and RWC-4851):
+  - Backend-driven ids/values: numeric enums matching the wire values, e.g. `LayerThicknessId { Micron50 = 1, ... }`, `FileSettingMode { Automated = 1, ... }`.
+  - Frontend-only state/kind sets: string enums whose values equal the previous literals (zero runtime change), e.g. `PlatformJobLoadPhase { LoadingJob = 'loading-job', ... }`, `EditToolSelectionKind { MultiSame = 'multi-same', ... }`, `TopBarChipKind`, `SceneMaterialKind`, `AlarmKind`, `ReferenceDataStatus`.
+  - Members are PascalCase; the value keeps the wire/literal form (`MeshDefect = 'meshDefect'`).
+  - Converting a union to a string enum breaks value-position code in ways typecheck catches: `Record<Enum, …>` object literals need computed keys (`[TopBarChipKind.Appliance]: …`), and tests passing bare literals must switch to enum members. Run typecheck first — it enumerates every fix point.
+  - Scope discipline: only convert types your branch owns or already touches. Do not sweep pre-existing shared types (e.g. `ApiMethod` in `services/api/types.ts`) into an unrelated PR.
+- **Single literal referenced from multiple places** → a shared `const`, not an enum (e.g. `TOOL_REGION_CLOSED = 'closed'` for a machine state id), with a comment naming what it must stay in sync with and which test locks it (RWC-4851 review).
+
+## i18n keys
+
+- Locales (`src/renderer/i18n/locales/*.json`) have fixed top-level namespaces (`date` / `phrase` / `sentence` / `unit`) — **never add a new top-level key** (RWC-4851 review). Short names go to `phrase`, longer/tooltip strings to `sentence`.
+- Feature key groups nest **inside** an existing namespace: `phrase.editTools.orientation`, consumed as `t('phrase.editTools.orientation')`. Do not flatten generic words (`scale`, `layout`, `supports`) as bare `phrase` keys — they will collide.
+- Every locale file mirrors the same structure; English copy is the source of truth, other locales follow the team's translation flow.
+
 ## Tests (tests/unit)
 
 - Framework: `node:test` + `assert/strict`, compiled by `tests/tsconfig.unit.json`, path aliases resolved at runtime by `tests/registerPathAlias.mjs`.
