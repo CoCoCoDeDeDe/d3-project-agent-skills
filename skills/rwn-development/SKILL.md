@@ -44,6 +44,16 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
   - Converting a union to a string enum breaks value-position code in ways typecheck catches: `Record<Enum, …>` object literals need computed keys (`[TopBarChipKind.Appliance]: …`), and tests passing bare literals must switch to enum members. Run typecheck first — it enumerates every fix point.
   - Scope discipline: only convert types your branch owns or already touches. Do not sweep pre-existing shared types (e.g. `ApiMethod` in `services/api/types.ts`) into an unrelated PR.
 - **Single literal referenced from multiple places** → a shared `const`, not an enum (e.g. `TOOL_REGION_CLOSED = 'closed'` for a machine state id), with a comment naming what it must stay in sync with and which test locks it (RWC-4851 review).
+- **Prefer existing domain enums over new ad-hoc ones** — before defining a new enum/const set, check `services/*/(types|constants).ts` for an existing definition to reference (RWC-4851 review: a custom `EditToolPrinterFamily` was rejected in favor of `PrinterPlatform` members).
+
+## Printer vs platform separation (permanent convention)
+
+`PrinterPlatform` in `services/printerPlatform` aggregates printer model + platform kit into one enum (`P23PArch`, `P23PDuo`, `MDSTiTan`…) — that is the **RWC 2.0 legacy shape**. In RWN (3.0) code:
+
+- Treat printer and platform/kit as **separate** concepts; derive the base model with `normalizePrinterPlatform` (kit variants collapse to `P23P`/`MDS`/…) and the kit via `SprintRayPrinterPlatformTypes`.
+- Comparisons go through **existing enum members + normalization** (`leg.excludedPrinters.includes(normalizePrinterPlatform(id))`), never through new aggregate discriminators like `'pro2OrMidas'` strings or custom family enums (RWC-4851 review).
+- Do not add new members/aggregates that mix the two axes; new conditional logic expresses constraints as sets of existing base-model members.
+- **Prefer blacklists for availability conditions** (RWC-4851 review): a future new printer/indication must pass by default with zero code changes — express "hidden on these" (`excludedPrinters: [...]`), not "shown only on these". Whitelists are only acceptable when the feature is inherently "only for these" (e.g. an indication family).
 
 ## i18n keys
 
