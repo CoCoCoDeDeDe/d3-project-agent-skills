@@ -33,3 +33,22 @@
 - `babylon-cad` 正文使用英文，顶部保留基于 [Curiosity-Ai-BV/Babylonjs-Skill](https://github.com/Curiosity-Ai-BV/Babylonjs-Skill) 改造的出处标注（CI compliance 会检查）
 - `xstate-*` 系列 skill 的 description 带 `Web CAD 项目：` 前缀
 - 修改 skill 后需重新安装并 `/reload` 生效
+
+## 发布（Release SOP）
+
+Kimi Code 插件管理器按 **GitHub Release** 解析更新（`/plugins` 的 Enter 安装的是 latest release），只推 main 或只打 tag 都不会被用户端看到。发版必须两步齐全：
+
+1. 合入 main 后，版本号 `kimi.plugin.json` 的 `version` 递增（如 0.5.0 → 0.6.0），commit 为 `chore(release): vX.Y.Z`
+2. 打**附注 tag** 并推送，再创建同名 GitHub Release：
+
+   ```bash
+   git tag -a vX.Y.Z -m "Release vX.Y.Z: <摘要>"
+   git push origin main vX.Y.Z
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes "<变更摘要>"
+   ```
+
+3. 用户侧：`/plugins` → Installed → 选中插件按 `Enter` 安装更新 → `/reload`（或新会话）生效
+
+验证：托管目录 `~/.kimi-code/plugins/managed/d3-project-agent-skills/kimi.plugin.json` 的 version 应为新版本。
+
+（2026-08 踩坑记录：v0.6.0 只推了 lightweight tag 未建 Release，重载后仍停在 v0.5.0。）
