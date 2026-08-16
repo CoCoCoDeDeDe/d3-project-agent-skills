@@ -59,11 +59,12 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 
 - Locales (`src/renderer/i18n/locales/*.json`) have fixed top-level namespaces (`date` / `phrase` / `sentence` / `unit`) — **never add a new top-level key** (RWC-4851 review). Short names go to `phrase`, longer/tooltip strings to `sentence`.
 - Feature key groups nest **inside** an existing namespace: `phrase.editTools.orientation`, consumed as `t('phrase.editTools.orientation')`. Do not flatten generic words (`scale`, `layout`, `supports`) as bare `phrase` keys — they will collide.
-- Every locale file mirrors the same structure; English copy is the source of truth, other locales follow the team's translation flow.
+- **Only edit `en.json`** (RWC-4756 convention): English copy is the source of truth; all other locale files are filled by CI/CD translation flow. Never hand-write keys into the other locale JSONs.
 
 ## Tests (tests/unit)
 
 - Framework: `node:test` + `assert/strict`, compiled by `tests/tsconfig.unit.json`, path aliases resolved at runtime by `tests/registerPathAlias.mjs`.
+- **Test scope discipline** (RWC-4756 convention): do **not** write unit tests for UI components or straight-through logic (prop forwarding, one-line delegations to an existing API, trivial wiring). Only complex logic and services merit tests — e.g. pure functions with branching/clamping, state reconciliation, parsers. If a candidate turns out to be a pass-through on implementation, skip the test.
 - **Import leaf modules, not barrels.** Barrel `index.ts` files can pull in binary assets (e.g. `.webp`) that crash Node test compilation — import the deep module under test directly with relative paths.
 - **No `any` in mocks** (`@typescript-eslint/no-explicit-any` is an error in CI). Use minimal structural mock types and cast at the boundary: `as unknown as Mesh`.
 - Assert logic and relationships, not tuned aesthetic values (brightness, zoom levels are design-tunable; do not hard-code them in assertions).
