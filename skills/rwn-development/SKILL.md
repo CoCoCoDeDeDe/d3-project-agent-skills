@@ -1,6 +1,6 @@
 ---
 name: rwn-development
-description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, vendored assets, dual-runtime provider seams, XState Studio sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase); NOT for RWC 2.0 / Design-Service or any other project.
+description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase); NOT for RWC 2.0 / Design-Service or any other project.
 type: prompt
 whenToUse: When working on code in the RaywareNative (RWC 3.0) repo (renderer, services, stores, tests), before pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. Do not apply these conventions to other repositories — several rules are RaywareNative-specific.
 ---
@@ -81,11 +81,12 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 - DTOs are the contract the native side implements against: mark fields optional when the backend may omit them, matching parser defenses.
 - Never bypass the provider: pages/components must not import `services/*/cloud` or `services/*/native` implementations directly.
 
-## XState Studio ↔ implementation sync
+## XState machine ↔ Stately Sketch sync
 
-- State-machine **structure is edited only in XState Studio**; exported files (e.g. `tmp-xstate.ts`) are read-only snapshots — never hand-edit them.
-- The implementation registers logic under the **names** from the export (guards/actions/events) — naming is the interface; keep both sides in sync, including branch order.
-- Studio import loses guard/action function bodies and Event property schemas — re-add them in Studio after importing, then export-only afterwards.
+- The implementation machine file (e.g. `interactionSystem.machine.ts`) is the **single source of truth — edit it directly**, structure included. The legacy Studio export workflow is retired; an old Studio-exported snapshot (e.g. `tmp-xstate.ts`) is read-only reference, never a sync target.
+- Keep the file Sketch-compatible: runtime imports only from `xstate`, no `enum` (const object + `as const` + same-name type), every non-xstate reference behind `deps` injection or type-only imports.
+- After every structural change, regenerate the paste version (`npm run sketch:interaction-machine`) — never hand-edit the output; the user pastes it into Stately Sketch for visual review.
+- Naming is the interface: logic (guards/actions) registers under the same names on both sides, including branch order. The full workflow lives in the `xstate-studio-sync-workflow` skill.
 
 ## Visual verification
 
