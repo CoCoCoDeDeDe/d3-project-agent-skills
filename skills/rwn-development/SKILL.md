@@ -30,6 +30,7 @@ npx prettier --check src --ignore-unknown
 ## Comments
 
 - **English only** (project CLAUDE.md rule; automated review checks it).
+- **No ticket numbers or review references** (`RWC-1234`, "review finding X") in code comments — a comment must stand on business/logic alone. 2.0 references with `file:line` stay (they are business context).
 - Keep *why* comments: design rationale, gotchas and their root causes, 2.0 references with `file:line`, non-obvious parameter semantics/units, architecture conventions.
 - Delete *what* comments that restate the code, decorative section dividers, and stale comments describing removed behavior.
 
@@ -83,10 +84,16 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 
 ## XState machine ↔ Stately Sketch sync
 
-- The implementation machine file (e.g. `interactionSystem.machine.ts`) is the **single source of truth — edit it directly**, structure included. The legacy Studio export workflow is retired; an old Studio-exported snapshot (e.g. `tmp-xstate.ts`) is read-only reference, never a sync target.
-- Keep the file Sketch-compatible: runtime imports only from `xstate`, no `enum` (const object + `as const` + same-name type), every non-xstate reference behind `deps` injection or type-only imports.
-- After every structural change, regenerate the paste version (`npm run sketch:interaction-machine`) — never hand-edit the output; the user pastes it into Stately Sketch for visual review.
-- Naming is the interface: logic (guards/actions) registers under the same names on both sides, including branch order. The full workflow lives in the `xstate-studio-sync-workflow` skill.
+Machine rules (parallel shadowing, live-read guards, naming-as-interface, test conventions) live in the `rwn-xstate-machines` skill; the Sketch paste workflow lives in `xstate-studio-sync-workflow`. The one-line summary: the implementation machine file is the source of truth — edit it directly, keep it Sketch-compatible (runtime imports only from `xstate`, no `enum`), and regenerate the paste version after structural changes.
+
+## Async operation invariants (platform-job store)
+
+Conventions for anything that rides the shared `asyncOperations` registry (the add-print-job-loading guide in the repo covers the lifecycle API):
+
+- **Every slot must have a guaranteed path to a terminal phase** — a stranded Running/Awaiting slot locks the whole workspace (the loading selector drives banner, controls, and machine guards). Running slots get the default deadline; Awaiting slots get the pipeline deadline; if you add a transition path, prove where it terminates.
+- **No silent aborts after the UI consumed the action** — if the panel already cleared a selection/mode, aborting must surface (start + immediately fail the operation so the error banner fires), never a bare `return`.
+- **Classify outcomes by the rejection shape, not by enumerating success shapes** — success paths multiply (handoffs, fast paths, reloads); the rejection shape is usually singular (an explicit Failed). Inverting the check avoids misclassifying the next newly discovered success path.
+- **Heuristic identity markers (TTL windows, timing guesses) are a last resort** — when used, document the misjudgment boundary in a comment. The correct fix for self/remote ambiguity is a correlation id from the backend; push for that instead of stacking frontend layers.
 
 ## Visual verification
 
