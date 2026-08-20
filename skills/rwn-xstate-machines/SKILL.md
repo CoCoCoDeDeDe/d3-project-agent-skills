@@ -1,8 +1,6 @@
 ---
 name: rwn-xstate-machines
-description: "RaywareNative (RWC 3.0) 的 XState 机器开发规范:parallel 机器的 shadowing 陷阱、守卫实时读 store、Sketch 兼容格式。Use when editing or reviewing interactionSystem.machine.ts or other XState machines in the RaywareNative repo — adding states/transitions/events/guards, wiring deps, or reviewing machine diffs. NOT for generic XState usage (xstate-interactions) or the Sketch paste/再生 workflow (xstate-studio-sync-workflow)."
-type: prompt
-whenToUse: When editing, extending, or reviewing XState machine files in the RaywareNative repository (graphics/machines/), including adding states/transitions/events, wiring deps implementations, or changing how the machine reads external stores.
+description: "RaywareNative (RWC 3.0) 的 XState 机器开发规范:parallel 机器的 shadowing 陷阱、守卫实时读 store、swallow 拦截模式、Sketch 兼容格式。Use when editing or reviewing interactionSystem.machine.ts or other XState machines in the RaywareNative repo — adding states/transitions/events/guards, wiring deps, or reviewing machine diffs. NOT for generic XState usage (xstate-interactions) or the Sketch paste/再生 workflow (xstate-studio-sync-workflow)."
 ---
 
 # RaywareNative XState 机器规范
@@ -25,6 +23,17 @@ RWN 的 interaction machine 根是 `type: 'parallel'`。**某个 region 处理�
 
 - loading/dragging 这类外部状态,守卫里**实时读 store**(`deps.isLoading()` 读 zustand),不在 machine context 里维护镜像——镜像会产生 reconciling 负担和过期窗口
 - 事件只作为"边沿通知"(如 LOADING_STARTED 用于清理),状态本身永远以 store 为准
+
+## 事件挂载层级与 swallow 拦截
+
+- 同类事件(如 `SELECT_TOOL` 打开/关闭/切换 tool)挂**父级状态统一监听**,不要在每个子状态里复制——进入/退出/拦截规则只有一处,新增子状态不用跟随改动;XState 深层优先匹配,个别子状态要特殊处理就在它内部加一条转换覆盖
+- "某状态下禁止某操作"用**显式 swallow 分支**(排在前的 targetless + guard,如 `{ guard: 'loading' }`),事件被消费、状态不变;**不要**用"不写转换"来隐式忽略——隐式忽略在图上看不到,review 和 Sketch 核对时都发现不了
+
+## 设计决策三问(改机器前先过)
+
+- **同一事件在这里要有不同的响应吗?** → 拆状态(状态 = 互斥的行为模式)
+- **同一个转换,只是"此刻允不允许"?** → 加 guard(读实时条件,不是行为模式)
+- **只是多了一份数据?** → 放 context 或外部 store,不要为此建状态
 
 ## 命名即接口
 

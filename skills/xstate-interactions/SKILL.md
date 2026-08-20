@@ -3,22 +3,25 @@ name: xstate-interactions
 description: "Web CAD 项目:XState v5 state machines and actor model for production apps, especially orchestrating Babylon.js 3D interactions in React. Use when working with XState, state machines, statecharts, actors, @xstate/react (useActor/useActorRef/useSelector), createMachine, setup(), assign, fromPromise, fromCallback, fromObservable, spawnChild, or when wiring XState to imperative APIs like Babylon observables. Covers v5-only patterns, React integration rules, and the Babylon-interaction actor pattern."
 ---
 
-# XState v5
+# XState v5(通用用法)
 
-## ⚠️ v5 ONLY — Never Mix v4 Syntax
+> 适用范围:通用 XState v5 + React + Babylon.js 用法。与具体仓库的约定冲突时,以该仓库的专属 skill 为准——RaywareNative(RWC 3.0)见 `rwn-xstate-machines`(该仓库是单台 parallel 根机器、guard 经 deps 实时读 store,与本文件部分通用建议不同)。
+> 分发注意:本 skill 的 `references/` 目录需连同 `SKILL.md` 一起获取,单独分发 `SKILL.md` 时文末的 references 链接不可用。
 
-This project uses **XState v5**. AI training data is flooded with v4 examples — mixing them is the #1 source of broken code. Rules:
+## ⚠️ 只用 v5 —— 禁止混用 v4 语法
+
+本项目用 **XState v5**。AI 训练数据里 v4 示例泛滥——混用是代码跑不起来的头号原因。规则:
 
 - ❌ `interpret(machine).start()` → ✅ `createActor(machine).start()`
 - ❌ `machine.withContext(...)` / `machine.withConfig(...)` → ✅ `setup({ ... }).createMachine({ ... })`
-- ❌ `assign({ count: (context) => context.count + 1 })` → ✅ `assign({ count: ({ context }) => context.count + 1 })` (destructured object arg)
-- ❌ `state.context` / `state.matches` on every frame → ✅ `actor.getSnapshot()` for one-off reads; in React subscribe with `useSelector` (never poll per frame)
-- ❌ `send` in machine options → ✅ actions receive `{ self, system }`; use `enqueueActions` for multi-action logic
-- ❌ `services` → ✅ `actors`; `invoke: { src: promiseFn }` → ✅ `invoke: { src: fromPromise(...) }`
+- ❌ `assign({ count: (context) => context.count + 1 })` → ✅ `assign({ count: ({ context }) => context.count + 1 })`(解构对象参数)
+- ❌ 每帧读 `state.context` / `state.matches` → ✅ 一次性读取用 `actor.getSnapshot()`;React 里用 `useSelector` 订阅(绝不按帧轮询)
+- ❌ machine options 里的 `send` → ✅ action 接收 `{ self, system }`;多 action 逻辑用 `enqueueActions`
+- ❌ `services` → ✅ `actors`;`invoke: { src: promiseFn }` → ✅ `invoke: { src: fromPromise(...) }`
 
-When searching docs, always search "XState v5". If an example shows `interpret`, it is v4 — discard it.
+搜文档时永远搜 "XState v5"。示例里出现 `interpret` 就是 v4——直接丢弃。
 
-## Core v5 Quick Reference
+## v5 核心速查
 
 ```typescript
 import { setup, createActor, assign, fromPromise, fromCallback } from "xstate";
@@ -42,41 +45,41 @@ const machine = setup({
 
 const actor = createActor(machine).start();
 actor.send({ type: "INC" });
-const snapshot = actor.getSnapshot(); // read once — do NOT poll every frame
+const snapshot = actor.getSnapshot(); // 只读一次——不要按帧轮询
 ```
 
-Key facts that prevent common mistakes:
+能防住常见错误的关键事实:
 
-- `context` is immutable. The ONLY way to change it is `assign`. Mutating `context.foo = x` inside an action silently does nothing useful.
-- Actors are the unit of everything: `fromPromise` (async ops), `fromCallback` (event sources), `fromObservable` (RxJS), machines themselves. Compose with `spawnChild` / `invoke`.
-- Cleanup: `fromCallback` receives `({ sendBack, receive, input })` and must return an unsubscribe function; v5 calls it when the actor stops.
+- `context` 是不可变的。修改它的**唯一**方式是 `assign`。在 action 里写 `context.foo = x` 不会报错的失效。
+- actor 是万物之源:`fromPromise`(异步操作)、`fromCallback`(事件源)、`fromObservable`(RxJS)、机器本身。用 `spawnChild` / `invoke` 组合。
+- 清理:`fromCallback` 接收 `({ sendBack, receive, input })`,**必须**返回一个退订函数;actor 停止时 v5 会调用它。
 
-## React Integration (@xstate/react) — Hard Rules
+## React 集成(@xstate/react)—— 硬规则
 
 ```typescript
 import { useActorRef, useSelector } from "@xstate/react";
 
-const actorRef = useActorRef(machine);                 // stable ref, no re-render on transitions
-const count = useSelector(actorRef, (s) => s.context.count); // re-renders ONLY when selected slice changes
+const actorRef = useActorRef(machine);                       // 稳定引用,状态迁移不触发重渲染
+const count = useSelector(actorRef, (s) => s.context.count); // 只有选中的切片变化才重渲染
 ```
 
-1. **Never `actorRef.send(...)` during render** — sends belong in event handlers and effects. A send in render can loop forever under StrictMode/concurrent rendering.
-2. **`useSelector` with the narrowest selector**, never subscribe to the whole snapshot — Babylon interaction machines transition at pointer-event frequency; whole-snapshot subscriptions re-render the app 60+ times/sec.
-3. One `useActorRef` per component instance is the default. Share an actor across the tree via context, not by recreating it.
-4. Side effects (DOM, Babylon, network) live in machine actions/invoked actors — React components only render snapshots and send events.
+1. **绝不在 render 期间 `actorRef.send(...)`** —— send 只能出现在事件处理器和 effect 里。render 里 send 在 StrictMode/并发渲染下可能死循环。
+2. **`useSelector` 配最窄的 selector**,绝不订阅整个 snapshot —— Babylon 交互机器以指针事件频率迁移;订阅整个 snapshot 会让应用每秒重渲染 60+ 次。
+3. 默认每个组件实例一个 `useActorRef`。跨组件树共享 actor 用 context 传递,不要重复创建。
+4. 副作用(DOM、Babylon、网络)只放在机器 action / invoked actor 里 —— React 组件只渲染 snapshot 和发送事件。
 
-## Babylon.js Interaction Pattern (this project's core use case)
+## Babylon.js 交互模式(本项目的核心用法)
 
-The architecture: **Babylon observers only SEND events; machine actions only APPLY state to the scene.** No business logic in observers, no Babylon API calls inside guards or reducers.
+架构原则:**Babylon observer 只发送事件;机器 action 只把状态应用到场景。** observer 里没有业务逻辑,guard 和 reducer 里没有 Babylon API 调用。
 
-### Wrap Babylon event sources with fromCallback
+### 用 fromCallback 包装 Babylon 事件源
 
 ```typescript
 import { fromCallback } from "xstate";
 import type { Scene } from "@babylonjs/core/scene";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 
-// An actor that turns scene pointer events into machine events
+// 把场景指针事件转成机器事件的 actor
 const pointerSource = fromCallback(({ sendBack, input }: {
   sendBack: (e: any) => void;
   input: { scene: Scene };
@@ -87,12 +90,12 @@ const pointerSource = fromCallback(({ sendBack, input }: {
       sendBack({ type: "POINTER_DOWN", mesh: info.pickInfo?.pickedMesh?.name ?? null });
     }
   });
-  // REQUIRED: v5 calls this cleanup when the actor stops
+  // 必须:v5 会在 actor 停止时调用这个清理函数
   return () => scene.onPointerObservable.remove(observer);
 });
 ```
 
-### Spawn it from the interaction machine
+### 从交互机器里 spawn 它
 
 ```typescript
 const cadInteractionMachine = setup({
@@ -101,7 +104,7 @@ const cadInteractionMachine = setup({
 }).createMachine({
   id: "cadInteraction",
   initial: "idle",
-  // Sketch only: fill in real context/guards; getScene is your app's own scene accessor, not an XState API
+  // 示意:getScene 是应用自己的 scene 访问器,不是 XState API
   invoke: { src: "pointerSource", input: ({ system }) => ({ scene: getScene(system) }) },
   states: {
     idle: {
@@ -109,56 +112,56 @@ const cadInteractionMachine = setup({
         POINTER_DOWN: [
           { guard: ({ event }) => event.mesh !== null, target: "dragging",
             actions: assign({ selected: ({ event }) => event.mesh }) },
-          { target: "cameraOrbiting" }, // empty space → camera gesture
+          { target: "cameraOrbiting" }, // 点到空处 → 相机手势
         ],
       },
     },
     dragging: {
-      on: { POINTER_UP: "idle" /* actions apply transform via scene API */ },
+      on: { POINTER_UP: "idle" /* action 里通过 scene API 应用变换 */ },
     },
     cameraOrbiting: { on: { POINTER_UP: "idle" } },
   },
 });
 ```
 
-### Applying state back to the scene
+### 把状态应用回场景
 
-Impure Babylon calls happen in **actions at state edges**, never in guards:
+不纯的 Babylon 调用只出现在**状态边沿的 action** 里,绝不出现在 guard 里:
 
 ```typescript
 entry: ({ context }) => {
   const mesh = scene.getMeshByName(context.selected!);
-  if (mesh) mesh.renderOutline = true;   // scene mutation is an action, not a guard
+  if (mesh) mesh.renderOutline = true;   // 场景修改是 action,不是 guard
 },
-exit: ({ context }) => { /* clear outline, dispose gizmos created in entry */ },
+exit: ({ context }) => { /* 清除描边,dispose 掉 entry 里创建的 gizmo */ },
 ```
 
-Gizmos, highlight layers, and utility meshes created in `entry` MUST be disposed in the corresponding `exit` — machines that don't do this leak GPU resources on every transition.
+`entry` 里创建的 gizmo、highlight layer、工具网格**必须**在对应的 `exit` 里 dispose——不这么做的机器每次状态迁移都在泄漏 GPU 资源。
 
-## Conventions for This Project
+## 本项目(通用 Web CAD)约定
 
-- **One machine per interaction domain** (`cadInteraction`, `cameraControl`, `partPlacement`), composed under a root system actor — not one mega-machine.
-- **Actor-per-entity**: each placed/dragged part gets a spawned child actor (`spawnChild`); the parent routes events by mesh id. `stopChild` disposes it together with its Babylon resources.
-- Machine files export the machine, never a started global actor — starting happens in React (`useActorRef`) or the root system.
-- Event names are past-tense facts (`POINTER_DOWN`, `PART_PLACED`), not commands (`handleClick`).
-- Guards are pure (context + event only). Any function touching `scene`, DOM, or time is an action or an invoked actor.
+- **每个交互域一台机器**(`cadInteraction`、`cameraControl`、`partPlacement`),组合在根 system actor 下——不搞一台巨型机器。(⚠️ RaywareNative 例外:它是单台 parallel 根机器,见 `rwn-xstate-machines`。)
+- **actor-per-entity**:每个被放置/拖拽的零件配一个 spawn 出来的子 actor(`spawnChild`);父机器按 mesh id 路由事件。`stopChild` 连同其 Babylon 资源一起销毁。
+- 机器文件只导出机器,绝不导出已启动的全局 actor——启动发生在 React(`useActorRef`)或根 system 里。
+- 事件名用过去式事实(`POINTER_DOWN`、`PART_PLACED`),不用命令式(`handleClick`)。
+- guard 保持纯粹(只看 context + event)。任何碰 `scene`、DOM、时间的函数都应该是 action 或 invoked actor。(⚠️ RaywareNative 例外:guard 经 deps 实时读 store,见 `rwn-xstate-machines`。)
 
-## Reference Files
+## 参考文件
 
-Read these files for detailed patterns on specific topics:
+特定主题的详细模式读这些文件(需连同 `references/` 目录一起获取):
 
-- **[testing.md](references/testing.md)** - Unit & async testing of machines and actors: `createActor` + `getSnapshot` assertions, `waitFor`, `SimulatedClock` for `after`/delays, mocking invoked actors via `machine.provide`, and `fromCallback`/Babylon observer tests. **Read this when writing or fixing tests for any machine.**
-- **[parallel-states.md](references/parallel-states.md)** - `type: "parallel"` regions, event broadcast, cross-region coordination via context mirrors and `raise`, `onDone` joins, and the parallel-state vs. separate-actor decision rules. **Read this before modeling selection/drag/camera as parallel regions.**
-- **[actor-supervision.md](references/actor-supervision.md)** - v5 error handling without Akka-style supervisors: `invoke` `onError` (`xstate.error.actor.*` events), capped retries with exponential backoff, `stopChild` lifecycle and context-ref cleanup, rebuilding crashed actors in React, isolating Babylon observer actors. **Read this when handling failures, retries, or child actor crashes.**
+- **[testing.md](references/testing.md)** —— 机器和 actor 的单元/异步测试:`createActor` + `getSnapshot` 断言、`waitFor`、`SimulatedClock` 控制 `after`/延迟、用 `machine.provide` mock invoked actor、`fromCallback`/Babylon observer 测试。**给任何机器写或修测试时读这个。**
+- **[parallel-states.md](references/parallel-states.md)** —— `type: "parallel"` region、事件广播、经 context 镜像和 `raise` 的跨区域协调、`onDone` 汇合、parallel-state vs 独立 actor 的抉择规则。**把 selection/drag/camera 建模为 parallel region 之前读这个。**(⚠️ 其中 context 镜像的协调方式不适用于 RaywareNative——RWN 禁止镜像,见 `rwn-xstate-machines`。)
+- **[actor-supervision.md](references/actor-supervision.md)** —— v5 的错误处理(没有 Akka 式 supervisor):`invoke` `onError`(`xstate.error.actor.*` 事件)、带指数退避的有限重试、`stopChild` 生命周期与 context 引用清理、在 React 里重建崩溃的 actor、隔离 Babylon observer actor。**处理失败、重试或子 actor 崩溃时读这个。**
 
-## AI Mistake Checklist (verify before finishing)
+## AI 错误自查清单(收尾前逐条核对)
 
-1. No `interpret`, no `.withConfig`, no v4 `assign((context) => ...)` function form.
-2. Context never mutated directly; all changes via `assign`.
-3. No `send` during React render; observers/handlers/effects only.
-4. `useSelector` used with narrow selectors; no whole-snapshot subscriptions in high-frequency machines.
-5. Every `fromCallback` returns a cleanup that removes its Babylon observer.
-6. Babylon API calls appear only in actions/invoked actors; guards are pure.
-7. Resources created in `entry` are disposed in `exit`; spawned actors stopped with `stopChild`.
+1. 没有 `interpret`、没有 `.withConfig`、没有 v4 的 `assign((context) => ...)` 函数形式。
+2. context 没有被直接修改;所有变更走 `assign`。
+3. React render 期间没有 `send`;只在 observer/handler/effect 里。
+4. `useSelector` 用了窄 selector;高频机器没有整 snapshot 订阅。
+5. 每个 `fromCallback` 都返回了移除其 Babylon observer 的清理函数。
+6. Babylon API 调用只出现在 action / invoked actor;guard 纯粹(或按仓库约定经 deps 读 store)。
+7. `entry` 里创建的资源在 `exit` 里 dispose;spawn 的 actor 用 `stopChild` 停止。
 
-For full API details beyond this card, fetch the official docs: `https://stately.ai/docs/xstate` (always v5).
+这份卡片之外的完整 API 细节,查官方文档:`https://stately.ai/docs/xstate`(永远是 v5)。
