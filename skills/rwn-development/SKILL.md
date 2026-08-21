@@ -1,22 +1,20 @@
 ---
 name: rwn-development
-description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase); NOT for RWC 2.0 / Design-Service or any other project.
-type: prompt
-whenToUse: When working on code in the RaywareNative (RWC 3.0) repo (renderer, services, stores, tests), before pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. Do not apply these conventions to other repositories — several rules are RaywareNative-specific.
+description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
 ---
 
 # RaywareNative (RWC 3.0) Development Conventions
 
 > **Scope:** everything in this skill applies only to the **RaywareNative (RWC 3.0)** repository. Its conventions (English-only comments, CI command set, test harness setup, provider seams) are repo-specific — do not generalize them to other projects.
 
-## Verification commands (run all before pushing)
+## Verification commands (run all before every commit)
 
-CI runs exactly these — run them locally and make them pass *before* opening/updating a PR:
+通用纪律(验证时机、缓存陷阱、各语言工具映射)见 `dev-conventions`;这里是 RWN 的具体命令集。CI runs exactly these — run them locally and make them pass **before every commit**, with caches cleared by default (don't wait for CI to catch a stale-cache miss):
 
 ```bash
 npm run typecheck          # tsc node + web configs
-npm run test:unit          # tsc tests/tsconfig.unit.json + node --test
-npm run lint               # eslint --cache . — must exit 0
+rm -rf out-tests && npm run test:unit    # stale compiled output runs ghost tests
+rm -f .eslintcache && npm run lint       # eslint --cache masks newly introduced errors
 npx prettier --check src --ignore-unknown
 ```
 
