@@ -32,6 +32,15 @@ npx prettier --check src --ignore-unknown
 - Keep *why* comments: design rationale, gotchas and their root causes, 2.0 references with `file:line`, non-obvious parameter semantics/units, architecture conventions.
 - Delete *what* comments that restate the code, decorative section dividers, and stale comments describing removed behavior.
 
+## Component READMEs (public components)
+
+Every shared component under `src/renderer/components/` (incl. `components/ui/`) ships a `README.md` in its folder — precedent format: `Button`/`Chip`/`Select` (short description, usage example, props table, style-override notes, Figma sources).
+
+- **Add it in the same branch that adds the component**, not a follow-up.
+- **Sync it before every commit that changes the component** (props, variants, behavior) — a stale README is treated like a stale comment.
+- `prettier --check` covers Markdown — write, then `npx prettier --write` the README before committing.
+- Business composites under `pages/` are exempt; the rule targets the reusable public surface.
+
 ## No magic strings: enums and shared constants
 
 Any string/number literal that carries **semantic meaning** (state ids, kind tags, machine state names, config keys) must not be written inline — a literal scattered across files has no rename safety, no typo protection, and no single source of truth. Two remedies by shape (both reviewer-enforced):
