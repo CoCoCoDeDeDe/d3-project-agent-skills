@@ -1,6 +1,6 @@
 {
   "name": "d3-project-agent-skills",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Personal agent skills for a 3D-printing Web CAD project: React 18 + Babylon.js 8 + XState v5 (AWS Lambda backend).",
   "keywords": [
     "babylonjs",
