@@ -25,6 +25,15 @@ npx prettier --check src --ignore-unknown
 - **Flaky CI exists** (e.g. `fatal: shallow file has changed since we read it` on shallow fetches). Re-run the failed job first; only change the workflow if it fails repeatedly.
 - Large PRs: call out vendored/bulk files in the PR description so reviewers don't read the raw line count as hand-written code. Prefer reviewing commit-by-commit — keep commits atomic (one logical change per commit, `type(scope): summary`).
 
+## Layout / constraint-chain changes (flex + fixed height + overflow)
+
+Layout bugs evade typecheck/lint/unit tests — the ToolsPanel shrink chain took three review rounds because each level was fixed reactively. Checklist before committing any bounded-container layout change:
+
+- **Draw the size chain first**: which layer is bounded, which layer yields when space runs out, what absorbs the yielded height (scroll region?), and each layer's min-content floor. Example chain: left column → panel → Collapse → MUI wrapper×2 → toolBox → `.options` scroll.
+- **Evaluate BOTH scenes**: constrained AND unconstrained. A fix that only satisfies the shrink case once regressed the Figma fixed height in the relaxed case (541px → content height) in the same PR series.
+- **Third-party internals before percentages/overrides**: writing `height:100%`, `overflow`, or selector overrides against MUI components → first check the rendered DOM slots and their stock styles (e.g. Collapse's `wrapper`/`wrapperInner` are `height:auto`, so percentages compute to `auto`; entered state sets `overflow:visible`, beat it with a `:global(.MuiCollapse-entered)` specificity bump — precedent `PrintJobFilesPanel.module.scss`).
+- **Manual-test the extreme**: shrink the window to the smallest realistic size (e.g. 1366×768 laptop) and look — ten seconds catches what no automated check does.
+
 ## Comments
 
 - **English only** (project CLAUDE.md rule; automated review checks it).
@@ -88,6 +97,12 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 - Unimplemented native endpoints **throw `ServiceNotImplementedError`** — never return mock/empty data. Silent fake data is worse than a loud error.
 - DTOs are the contract the native side implements against: mark fields optional when the backend may omit them, matching parser defenses.
 - Never bypass the provider: pages/components must not import `services/*/cloud` or `services/*/native` implementations directly.
+
+## Tool panel configuration (permanent convention)
+
+- A tool panel's options are the configuration for the ONE edit request its Save fires — they **never read or prefill from the models' persisted platform metadata**. Initial values are product defaults (e.g. raft defaults Off) or "no selection", never job data. This kills the "multi-selected models hold different values for the same option" display problem at the source.
+- Two boundaries: reading persisted data as the **edit target** (e.g. support points rendered in Edit supports) is fine; reading it for **availability gating** (e.g. `isSupported` gates editing) is fine. Forbidden only as option prefill.
+- Review check for new options: is the initial value a constant / none, or does it read job data? The latter is always rejected.
 
 ## XState machine ↔ Stately Sketch sync
 
