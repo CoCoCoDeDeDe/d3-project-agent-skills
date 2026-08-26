@@ -66,7 +66,7 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 ## i18n keys
 
 - Locales (`src/renderer/i18n/locales/*.json`) have fixed top-level namespaces (`date` / `phrase` / `sentence` / `unit`) — **never add a new top-level key** (RWC-4851 review). Short names go to `phrase`, longer/tooltip strings to `sentence`.
-- Feature key groups nest **inside** an existing namespace: `phrase.editTools.orientation`, consumed as `t('phrase.editTools.orientation')`. Do not flatten generic words (`scale`, `layout`, `supports`) as bare `phrase` keys — they will collide.
+- Keys stay **single-level** under each namespace (long-standing team convention): no nested objects. Embed the feature prefix in the camelCase key name instead — `phrase.editToolsOrientationSelectBase`, `phrase.editToolsSupportsStyleBalanced` — so generic words (`scale`, `layout`, `supports`) still can't collide and never become bare keys.
 - **Only edit `en.json`** (RWC-4756 convention): English copy is the source of truth; all other locale files are filled by CI/CD translation flow. Never hand-write keys into the other locale JSONs.
 
 ## Tests (tests/unit)
