@@ -104,6 +104,16 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 - Two boundaries: reading persisted data as the **edit target** (e.g. support points rendered in Edit supports) is fine; reading it for **availability gating** (e.g. `isSupported` gates editing) is fine. Forbidden only as option prefill.
 - Review check for new options: is the initial value a constant / none, or does it read job data? The latter is always rejected.
 
+## Business-rule encapsulation (permanent convention)
+
+For availability/limitation/eligibility rules (edit tools, render controls, file actions, print eligibility) — a legacy-heavy business system defeats any pre-defined rule schema:
+
+- **Thin uniform evaluation points**: one signature, one formula per surface (`isEditToolUsable`, machine guards calling injected deps). New tools/rules change registry data, never the evaluators.
+- **One full context**: every plausible factor (job types/printer/kit, selection, loading, featureFlags) goes into one context object; rule functions read what they need. A new factor = one new context field, available to all rules on both entry and exit sides.
+- **Business complexity lives in functions**: rules are plain `(context) => boolean`; the domain logic behind them is decomposed into named pure helpers (the unit of unit-testing) — never anonymous mega-lambdas, never business logic leaking into components/machines/effects.
+- **Declarative data only for genuinely tabular facts**: a rule may be a data table only if the product can state it fully as a table with zero procedural logic (the "Tools per indication" matrix). Anything with "when X, first do Y then Z" semantics is a function. When in doubt, choose a function.
+- Do not invent per-feature rule schemas (a `disallowX: boolean` field, a narrow input type) — they break on the next business case. Extend the shared context instead.
+
 ## XState machine ↔ Stately Sketch sync
 
 Machine rules (parallel shadowing, live-read guards, naming-as-interface, test conventions) live in the `rwn-xstate-machines` skill; the Sketch paste workflow lives in `xstate-studio-sync-workflow`. The one-line summary: the implementation machine file is the source of truth — edit it directly, keep it Sketch-compatible (runtime imports only from `xstate`, no `enum`), and regenerate the paste version after structural changes.
