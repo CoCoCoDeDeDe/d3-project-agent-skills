@@ -1,46 +1,46 @@
 ---
 name: rwn-xstate-machines
-description: "RaywareNative (RWC 3.0) 的 XState 机器开发规范:parallel 机器的 shadowing 陷阱、守卫实时读 store、swallow 拦截模式、Sketch 兼容格式。Use when editing or reviewing interactionSystem.machine.ts or other XState machines in the RaywareNative repo — adding states/transitions/events/guards, wiring deps, or reviewing machine diffs. NOT for generic XState usage (xstate-interactions) or the Sketch paste/再生 workflow (xstate-studio-sync-workflow)."
+description: "RaywareNative (RWC 3.0) XState machine conventions: parallel-machine shadowing, live-read guards (no mirrors), event mounting levels and swallow interception, and the design questions to ask before changing a machine. Use when editing or reviewing interactionSystem.machine.ts or other XState machines in the RaywareNative repo — adding states/transitions/events/guards, wiring deps, or reviewing machine diffs. NOT for generic XState usage (xstate-interactions) or the Sketch paste/regeneration workflow (xstate-studio-sync-workflow)."
 ---
 
-# RaywareNative XState 机器规范
+# RaywareNative XState Machine Conventions
 
-> 只适用于 RaywareNative(RWC 3.0)。通用 XState 用法见 `xstate-interactions`;Sketch 粘贴版生成与可视化核对流程见 `xstate-studio-sync-workflow`。
+> Applies only to RaywareNative (RWC 3.0). Generic XState usage lives in `xstate-interactions`; the Stately Sketch paste/visualization workflow (Sketch script-mode constraints, the paste-version generator, naming-as-interface) lives in `xstate-studio-sync-workflow`.
 
-## Parallel 机器的 shadowing 陷阱(最容易踩的坑)
+## Parallel-machine shadowing (the most common trap)
 
-RWN 的 interaction machine 根是 `type: 'parallel'`。**某个 region 处理了事件,根节点自己的 `on` handler 就不会执行**——这不是"都会跑",是互斥回落。
+RWN's interaction machine root is `type: 'parallel'`. When a region handles an event, the root's own `on` handler does NOT run — it is a mutually exclusive fallback, not "both run".
 
-后果模式:根级 `LOADING_STARTED: { actions: [清理...] }` 这类"广播清理"会被任何 region 内的同名转换遮蔽。踩过的实际 bug:hover/预选中清理在 orientation 子态打开时被吞掉,高亮残留整个 loading 期间。
+Consequence: a root-level broadcast cleanup like `LOADING_STARTED: { actions: [cleanup...] }` is shadowed by any same-name transition inside a region. Real bug hit: hover/preselect cleanup was swallowed while the orientation substate was open, leaving the highlight stale for the whole loading phase.
 
-规则:
+Rules:
 
-- 给任何 region 加广播类事件(LOADING_STARTED 等)的转换时,**检查根级同名 handler 的 action 是否需要在该子转换上重复**
-- review 机器 diff 时,对每个新增的子态事件转换问一句:"它遮蔽了根的什么?"
-- 回归测试:`snapshot.context` 断言清理发生(参考 `tests/unit/editToolRegistry.test.ts` 里 "loading started inside an orientation mode still clears hover and preselect state")
+- When adding a broadcast-event transition (LOADING_STARTED etc.) to any region, check whether the root-level handler's actions must be repeated on that child transition.
+- When reviewing a machine diff, ask of every new substate event transition: "what does it shadow at the root?"
+- Regression test: assert the cleanup via `snapshot.context` (precedent: "loading started inside an orientation mode still clears hover and preselect state" in `tests/unit/editToolRegistry.test.ts`).
 
-## 守卫读实时状态,不做镜像
+## Guards read live state, no mirrors
 
-- loading/dragging 这类外部状态,守卫里**实时读 store**(`deps.isLoading()` 读 zustand),不在 machine context 里维护镜像——镜像会产生 reconciling 负担和过期窗口
-- 事件只作为"边沿通知"(如 LOADING_STARTED 用于清理),状态本身永远以 store 为准
+- External state (loading, dragging) is read live in guards (`deps.isLoading()` reads the zustand store) — never mirrored in machine context; a mirror adds reconciliation burden and a stale window.
+- Events exist only as edge notifications (LOADING_STARTED for cleanup); the state itself always comes from the store.
 
-## 事件挂载层级与 swallow 拦截
+## Event mounting levels and swallow interception
 
-- 同类事件(如 `SELECT_TOOL` 打开/关闭/切换 tool)挂**父级状态统一监听**,不要在每个子状态里复制——进入/退出/拦截规则只有一处,新增子状态不用跟随改动;XState 深层优先匹配,个别子状态要特殊处理就在它内部加一条转换覆盖
-- "某状态下禁止某操作"用**显式 swallow 分支**(排在前的 targetless + guard,如 `{ guard: 'loading' }`),事件被消费、状态不变;**不要**用"不写转换"来隐式忽略——隐式忽略在图上看不到,review 和 Sketch 核对时都发现不了
+- Same-family events (e.g. SELECT_TOOL open/close/switch) mount on the **parent state** once, never duplicated in every substate — entry/exit/interception rules live in one place and new substates need no changes. XState deep matching wins; a substate needing special handling adds one overriding transition inside itself.
+- "Forbid X in this state" uses an explicit **swallow branch** (a leading targetless `{ guard: ... }` transition): the event is consumed, the state stays. Do NOT rely on omitting the transition — an implicit ignore is invisible in the diagram and neither review nor Sketch verification can catch it.
 
-## 设计决策三问(改机器前先过)
+## Three design questions before touching a machine
 
-- **同一事件在这里要有不同的响应吗?** → 拆状态(状态 = 互斥的行为模式)
-- **同一个转换,只是"此刻允不允许"?** → 加 guard(读实时条件,不是行为模式)
-- **只是多了一份数据?** → 放 context 或外部 store,不要为此建状态
+- Does the SAME event need different responses here? → split a state (a state = mutually exclusive behavior modes).
+- Is it the same transition, just "allowed right now or not"? → add a guard (read live conditions, not a behavior mode).
+- Is it just more data? → put it in context or the external store; do not create a state for it.
 
-## 命名即接口
+## Naming is the interface
 
-- deps 的 guard/action/event 名字是 machine 文件与实现层之间的接口,两侧同步(含分支顺序)
-- machine 文件保持 Sketch 兼容:runtime import 只有 `xstate`、无 `enum`(const object + `as const`)、非 xstate 引用走 deps 或 type-only import;结构改动后重跑 `npm run sketch:interaction-machine` 生成粘贴版(产物在 `out/`,不提交)
+- deps guard/action/event names are the interface between the machine file and the implementation layer — both sides stay in sync, including branch order.
+- Machine-file Sketch compatibility (runtime imports only from `xstate`, no `enum`, non-xstate references via deps/type-only imports) and regenerating the paste version after structural changes: see `xstate-studio-sync-workflow`.
 
-## 测试约定
+## Test conventions
 
-- 机器测试用 `snapshot.matches(partialValue)` 子集匹配,一个用例只断言它命名的维度
-- inert deps 全量提供(新增 deps 成员时测试 mock 要同步补,`editToolRegistry.test.ts` 是宿主)
+- Machine tests assert with `snapshot.matches(partialValue)` subset matching — one case asserts only the dimension it names (full state-value `toEqual` on parallel machines is forbidden; see `rwn-development` Tests).
+- Inert deps are provided in full: when a deps member is added, test mocks must be updated in the same change — `tests/unit/editToolRegistry.test.ts` is the host.
