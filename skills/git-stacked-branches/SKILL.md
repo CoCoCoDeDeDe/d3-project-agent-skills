@@ -1,42 +1,44 @@
 ---
 name: git-stacked-branches
-description: "Squash 合并 + 栈式分支(-1/-2/-3 系列分支)的协作工作流:父 PR 合入后子分支必然冲突的机理与标准处理、本地/远程分支的 checkout 陷阱。Use when a stacked PR shows conflicts right after its parent merged, when deciding rebase vs merge for stacked branches, or when checkout --track fails with 'branch already exists'."
-type: prompt
-whenToUse: When working with stacked feature branches (ticket-numbered chains like RWC-1234-foo-1/-2/-3), after a parent PR merges and the child PR shows conflicts, or when local/remote branch checkout behaves unexpectedly.
+description: "Squash-merge + stacked-branch workflow (ticket-numbered chains like RWC-1234-foo-1/-2/-3): why a child PR necessarily conflicts right after its parent merges, the standard handling, and local/remote branch checkout traps. Use when a stacked PR shows conflicts right after its parent merged, when deciding rebase vs merge for stacked branches, or when local/remote branch checkout behaves unexpectedly (including worktree 'already used by worktree')."
 ---
 
-# Squash 合并 × 栈式分支工作流
+# Squash Merge × Stacked Branch Workflow
 
-## 核心事实:父 PR 合入后,子分支 PR 必然临时冲突
+## Core fact: after a parent PR merges, the child PR temporarily conflicts — necessarily
 
-机理:squash 合入把父分支内容压成 develop 上**一个全新 commit**;子分支历史里同样的内容以原始 commit 序列存在。子 PR 的 base 自动指向 develop 后,merge-base 停在分叉点,git 看到"两侧改了同样的文件同样的行但来自不同 commit"→ 判冲突。
+Mechanism: the squash merge collapses the parent branch into ONE brand-new commit on develop; the same content exists in the child's history as the original commit sequence. Once the child PR's base auto-points to develop, the merge-base sits at the fork point and git sees "both sides changed the same files at the same lines, but from different commits" → conflict.
 
-**内容相同也冲突**:git 合并比较的是两侧的 patch,不做内容等价判断。
+**Identical content still conflicts**: git merge compares both sides' patches; it does not judge content equivalence.
 
-## 标准处理(机械操作)
+## Standard handling (mechanical)
 
-父 PR 合入后,立刻给子分支:
+Right after the parent PR merges, for the child branch:
 
 ```bash
-git checkout <子分支>
+git checkout <child-branch>
 git fetch origin
-git merge origin/develop   # 内容相同处自动消解;同区编辑可能留小冲突
-# 验证(typecheck/test/lint/format)后 push
+git merge origin/develop   # identical content auto-resolves; same-region edits may leave small conflicts
+# verify (typecheck/test/lint/format) then push
 ```
 
-- **不要 rebase**:子分支有 open PR,rebase 改写历史要 force-push,PR 评论锚点丢失,且连锁要求更下游分支全部 rebase
-- merge 得到完全相同的树,GitHub 的冲突标记消失
-- 多级栈逐级做:第 N 层合入后 merge develop 进第 N+1 层
-- 冲突取舍惯例:子分支内容通常是父的超集,`git checkout --ours` 前先用 `git log origin/develop --oneline -3 -- <file>` 核实 develop 侧在 squash 后有没有真实新变化
+- **Do not rebase**: a child branch with an open PR — rebasing rewrites history and needs a force-push, PR comment anchors are lost, and every further-downstream branch must rebase in turn.
+- Merging produces an identical tree; GitHub's conflict markers disappear.
+- Do it level by level down a multi-level stack: after level N merges, merge develop into level N+1.
+- Conflict-resolution convention: the child branch is usually a superset of the parent — before `git checkout --ours`, verify with `git log origin/develop --oneline -3 -- <file>` whether develop gained any real change on that side after the squash.
 
-## 预防选项(团队层面)
+## Prevention options (team level)
 
-- 栈式 PR 改用 merge commit 合入(非 squash)则完全无此问题——代价是 develop 历史保留原始 commit 序列
-- 或接受现状,把"父合入 → 子 merge develop"写进流程
+- Stacked PRs merged with merge commits (not squash) avoid this entirely — at the cost of develop history keeping the original commit sequence.
+- Or accept the status quo and bake "parent merged → child merges develop" into the workflow.
 
-## 配套:本地同名分支的 checkout 陷阱
+## Companion: local same-name branch checkout traps
 
-- `git checkout --track origin/X` 的语义是"**新建**本地分支并关联"——本地已有 X 时报 `already exists`
-- `git checkout X` 只切换、**不同步**;本地 X 可能落后于 origin/X(切完看 `git status` 的 ahead/behind)
-- 本地与远程同点时补关联:`git branch --set-upstream-to=origin/X X`
-- 本地分支要丢弃重来:`git checkout -B X origin/X`
+- `git checkout --track origin/X` semantics is "**create** a local branch and associate it" — when a local X already exists it errors with `already exists`.
+- `git checkout X` only switches, does **not** sync; local X may lag origin/X (check the ahead/behind in `git status` after switching).
+- Same local/remote commit, missing association: `git branch --set-upstream-to=origin/X X`.
+- Discard and recreate a local branch: `git checkout -B X origin/X`.
+
+## Companion: worktree checkout traps
+
+- Worktree setups (main repo + `RaywareNative-side-1/ -2 -3`): one branch can be checked out in only **one** worktree — checking out the same branch from another worktree fails with `already used by worktree at …`. Detach first, or switch to the worktree that holds it.

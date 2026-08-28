@@ -1,22 +1,46 @@
 ---
 name: rwn-development
-description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
+description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, icon/i18n rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
 ---
 
 # RaywareNative (RWC 3.0) Development Conventions
 
 > **Scope:** everything in this skill applies only to the **RaywareNative (RWC 3.0)** repository. Its conventions (English-only comments, CI command set, test harness setup, provider seams) are repo-specific — do not generalize them to other projects.
 
+## Repository topology
+
+- RWN is the **RaywareNative repository (RWC 3.0)**. The local checkout is one main repo
+  (`RaywareNative/`, tracking `develop`) plus git **worktrees** `RaywareNative-side-1/ -2 -3`
+  created from it — not standalone clones. Side worktrees host the developer's stacked feature
+  branches, or detached-at-develop checkouts for reviewing colleagues' PRs; all four share one
+  object store.
+- Worktree gotcha: one branch can be checked out in only one worktree — checking it out
+  elsewhere fails with "already used by worktree at …"; detach first or switch to the worktree
+  that holds it.
+- `refs/Design-Service/` is a **different repository — RWC 2.0 (backend + 2.0 frontend)**,
+  analysis reference only. Nothing in this skill applies there (see Scope), and RWN code is
+  never judged against its conventions. RWN's native/Electron side and its AWS infrastructure
+  still depend on RWC 2.0 libraries (team-confirmed) — that dependency is why the dual-runtime
+  provider seams below exist.
+
 ## Verification commands (run all before every commit)
 
-通用纪律(验证时机、缓存陷阱、各语言工具映射)见 `dev-conventions`;这里是 RWN 的具体命令集。CI runs exactly these — run them locally and make them pass **before every commit**, with caches cleared by default (don't wait for CI to catch a stale-cache miss):
+See `dev-conventions` for the cross-repo discipline (verification timing, cache traps,
+per-language tool mapping); this is RWN's concrete command set. CI runs exactly these — run
+them locally and make them pass **before every commit**, with caches cleared by default (don't
+wait for CI to catch a stale-cache miss):
 
 ```bash
 npm run typecheck          # tsc node + web configs
 rm -rf out-tests && npm run test:unit    # stale compiled output runs ghost tests
 rm -f .eslintcache && npm run lint       # eslint --cache masks newly introduced errors
-npx prettier --check src --ignore-unknown
+npx prettier --check src --ignore-unknown   # exact CI command (check-frontend-format.yml)
 ```
+
+- `npx prettier --check src --ignore-unknown` is the **exact CI command**
+  (`check-frontend-format.yml`); CI guards only `src`. When a change also touches
+  `tests/`, run `npx prettier --check tests --ignore-unknown` as well — the session
+  convention checks both, and a formatting diff in tests is still a review failure.
 
 ## CI discipline
 
@@ -78,10 +102,17 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
 - Keys stay **single-level** under each namespace (long-standing team convention): no nested objects. Embed the feature prefix in the camelCase key name instead — `phrase.editToolsOrientationSelectBase`, `phrase.editToolsSupportsStyleBalanced` — so generic words (`scale`, `layout`, `supports`) still can't collide and never become bare keys.
 - **Only edit `en.json`** (RWC-4756 convention): English copy is the source of truth; all other locale files are filled by CI/CD translation flow. Never hand-write keys into the other locale JSONs.
 
+## Icons (feature assets)
+
+- **Search before adding**: before importing a new icon, search `src/renderer/assets/generalIcons/` for an existing asset that already matches the intent (same visual, variant, or state). Icon sets grow from Figma exports and duplicates accumulate silently — reusing a same-purpose icon (possibly the mono vs colored variant) beats copying it under a new name (edit-tools panel precedent).
+- **Feature-scoped snake_case naming**: new icons live in `assets/generalIcons/<feature>/<icon-name>.svg` with a name describing the icon's visual — `editTools/supports/edit-supports.svg`, `support-style-balanced.svg`, `raft-on.svg` — never a ticket number or a UI label.
+- **Figma exports can bake state artifacts**: exported SVGs may carry a baked disabled/hover look (precedent: `redo.svg` shipped a baked 0.2 fill-opacity that was the disabled state, fixed in the edit-supports branch). On export, strip state-specific opacities/colors — the component owns state styling; the asset stays neutral.
+
 ## Tests (tests/unit)
 
 - Framework: `node:test` + `assert/strict`, compiled by `tests/tsconfig.unit.json`, path aliases resolved at runtime by `tests/registerPathAlias.mjs`.
 - **Test scope discipline** (RWC-4756 convention): do **not** write unit tests for UI components or straight-through logic (prop forwarding, one-line delegations to an existing API, trivial wiring). Only complex logic and services merit tests — e.g. pure functions with branching/clamping, state reconciliation, parsers. If a candidate turns out to be a pass-through on implementation, skip the test.
+- **A change that touches covered logic updates its tests in the same commit** — machine states/events/guards, service functions, resolvers included. CI runs the whole suite, but a stale test that still passes (it exercises only an unchanged branch) is a review failure: the assertion no longer describes the behavior being shipped.
 - **Import leaf modules, not barrels.** Barrel `index.ts` files can pull in binary assets (e.g. `.webp`) that crash Node test compilation — import the deep module under test directly with relative paths.
 - **No `any` in mocks** (`@typescript-eslint/no-explicit-any` is an error in CI). Use minimal structural mock types and cast at the boundary: `as unknown as Mesh`.
 - Assert logic and relationships, not tuned aesthetic values (brightness, zoom levels are design-tunable; do not hard-code them in assertions).
