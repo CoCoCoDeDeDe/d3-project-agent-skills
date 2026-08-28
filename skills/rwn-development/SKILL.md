@@ -1,6 +1,6 @@
 ---
 name: rwn-development
-description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, icon/i18n rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
+description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, no-magic-strings type discipline (closed value sets as enums, shared literals as constants), icon/i18n rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
 ---
 
 # RaywareNative (RWC 3.0) Development Conventions
@@ -41,6 +41,7 @@ npx prettier --check src --ignore-unknown   # exact CI command (check-frontend-f
   (`check-frontend-format.yml`); CI guards only `src`. When a change also touches
   `tests/`, run `npx prettier --check tests --ignore-unknown` as well — the session
   convention checks both, and a formatting diff in tests is still a review failure.
+- **Magic-string scan**: typecheck/lint/prettier never catch semantic string literals — before committing, grep the diff for new handwritten `'...'` discriminator unions and literals repeated across files (closed sets → `enum`, shared literals → `const`). General rule + decision table in `dev-conventions`; RWN instances and scope discipline below.
 
 ## CI discipline
 
@@ -86,6 +87,8 @@ Any string/number literal that carries **semantic meaning** (state ids, kind tag
   - Scope discipline: only convert types your branch owns or already touches. Do not sweep pre-existing shared types (e.g. `ApiMethod` in `services/api/types.ts`) into an unrelated PR.
 - **Single literal referenced from multiple places** → a shared `const`, not an enum (e.g. `TOOL_REGION_CLOSED = 'closed'` for a machine state id), with a comment naming what it must stay in sync with and which test locks it (RWC-4851 review).
 - **Prefer existing domain enums over new ad-hoc ones** — before defining a new enum/const set, check `services/*/(types|constants).ts` for an existing definition to reference (RWC-4851 review: a custom `EditToolPrinterFamily` was rejected in favor of `PrinterPlatform` members).
+
+The general, repo-agnostic rule and the pre-commit scan live in `dev-conventions`; this section keeps the RaywareNative instances and scope discipline.
 
 ## Printer vs platform separation (permanent convention)
 
