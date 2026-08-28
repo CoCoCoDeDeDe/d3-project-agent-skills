@@ -22,6 +22,11 @@ Cached linters/build tools (`eslint --cache`, incremental builds) mask newly int
 
 When local passes but CI fails, first suspect "did I verify against a cached result?", not the CI.
 
+- **Stale dev-server modules**: after multi-file changes (especially new exports), a long-running
+  dev server can serve a mixed module graph (new consumer + old provider) that throws errors
+  absent from the on-disk code. Restart the dev server (or hard-refresh) BEFORE treating the
+  error as a code bug — verify against a freshly-started server, then investigate.
+
 ## Per-language check and format tools
 
 Pick by language; every commit must pass:
