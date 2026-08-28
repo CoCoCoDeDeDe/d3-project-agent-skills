@@ -34,6 +34,14 @@ npm run sketch:interaction-machine   # → out/sketch/interactionSystem.machine.
 
 The transform is deliberately dumb: drop `import ...` lines, strip leading `export `, prepend type stubs (`type Mesh = any` etc.) and fallback implementations for xstate helpers (`and`/`not` faithfully reimplemented; `stateIn` falls back to `() => false`, i.e. "not dragging", so SELECT_TOOL and shortcuts stay operable in simulation). `setup`/`assign` are assumed to exist globally in Sketch — if Sketch reports them undefined, that is a generator problem, not a source-file problem.
 
+- **External-type stubs must track the machine's imports**: the generator's header stubs
+  (Scene/Mesh/…/ViewAlignOptions) are hard-coded — adding a NEW external type import to the
+  machine file requires adding a matching `type X = any;` stub in the same change, or the paste
+  version references an undefined type. (Hit with ViewAxis/ViewAlignOptions in the edit-supports
+  branch.) ESLint/Prettier cannot catch this cross-file mismatch — only review can. Long-term fix
+  under consideration: derive the stubs from the machine's type-only imports instead of
+  hand-maintaining them.
+
 ## Naming is the interface
 
 Sketch shows the **names** of states, transitions, events, and guard/actions. All business logic hides behind those names (guards read the store via deps; actions mutate the scene/store). Consequences:

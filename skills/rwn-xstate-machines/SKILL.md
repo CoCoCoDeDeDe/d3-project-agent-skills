@@ -39,6 +39,10 @@ Rules:
 
 - deps guard/action/event names are the interface between the machine file and the implementation layer — both sides stay in sync, including branch order.
 - Machine-file Sketch compatibility (runtime imports only from `xstate`, no `enum`, non-xstate references via deps/type-only imports) and regenerating the paste version after structural changes: see `xstate-studio-sync-workflow`.
+- **Every deps member needs a consumer**: declare only what the machine's actions/guards (or an
+  injected channel the machine names) actually use. A dead member (declared, never invoked) costs
+  every test mock forever and misleads the event-flow reading — delete it (edit-supports
+  `updateHover` precedent: hover went through the adapter hooks directly, same as orient-base).
 
 ## Test conventions
 
