@@ -33,6 +33,7 @@ import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 **Side-effect imports** (enable features without referencing exports):
 ```typescript
 import "@babylonjs/core/Meshes/thinInstanceMesh";
+import "@babylonjs/core/Meshes/instancedMesh"; // createInstance() throws without it (hit in edit-supports)
 import "@babylonjs/core/Rendering/edgesRenderer";
 import "@babylonjs/core/Collisions/collisionCoordinator";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
