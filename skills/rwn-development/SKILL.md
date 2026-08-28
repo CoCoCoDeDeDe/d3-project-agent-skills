@@ -164,3 +164,7 @@ Conventions for anything that rides the shared `asyncOperations` registry (the a
 ## Visual verification
 
 Rendered visuals (lighting, colors, outlines, transparency artifacts) are verified by a human in the browser. Do not self-verify visuals via screenshots or claim visual correctness from code reading alone.
+
+- **A rendered/visual convention is design-doc truth until the render disproves it**: marking direction, selection colors, materials, transparency — when a review finding or an automated review contradicts a convention the design doc recorded (a「踩坑」section) or one already verified in the browser, do NOT auto-apply the suggestion. Surface the conflict to the human for a visual decision. Code-reading inference has lost to actual render verification before: a review-driven normal-direction flip shipped, was pushed, and was reverted after the human saw the inverted render (红面反了).
+- **Rendered-behavior changes need human visual sign-off before push**: any commit that changes what the scene renders (marking/selection colors, materials, transparency, geometry display) is pushed only after the human confirms the render — never on code review alone, whatever CI or an automated reviewer concludes.
+- **Lock visual conventions in a pure-function test + a why comment**: the need-support marking direction is guarded by a unit test and the flat-shading flip mechanism is documented in the function's JSDoc, so the convention survives future review pressure instead of depending on one reviewer's reading.
