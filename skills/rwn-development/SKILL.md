@@ -1,6 +1,6 @@
 ---
 name: rwn-development
-description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, no-magic-strings type discipline (closed value sets as enums, shared literals as constants), icon/i18n rules, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
+description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, no-magic-strings type discipline (closed value sets as enums, shared literals as constants), icon/i18n rules, tool-panel multi-select conflict handling, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
 ---
 
 # RaywareNative (RWC 3.0) Development Conventions
@@ -137,6 +137,21 @@ The general, repo-agnostic rule and the pre-commit scan live in `dev-conventions
 - A tool panel's options are the configuration for the ONE edit request its Save fires — they **never read or prefill from the models' persisted platform metadata**. Initial values are product defaults (e.g. raft defaults Off) or "no selection", never job data. This kills the "multi-selected models hold different values for the same option" display problem at the source.
 - Two boundaries: reading persisted data as the **edit target** (e.g. support points rendered in Edit supports) is fine; reading it for **availability gating** (e.g. `isSupported` gates editing) is fine. Forbidden only as option prefill.
 - Review check for new options: is the initial value a constant / none, or does it read job data? The latter is always rejected.
+- **Forward masked/effective state to Save, never raw state**: a panel that masks raw state into an effective value (composition/availability gates) must have every Save/request path send the EFFECTIVE value. A value a gate hides from the UI must never join a request — it would override persisted per-model state the gate exists to protect (RWC-4764: the style Save forwarded raw `raftChoice`, leaking a crown-gated `true` onto non-crown models).
+
+## Tool panel multi-select conflict handling (permanent convention)
+
+When a tool panel's options are gated by the selected models' composition (different `TreatmentApplianceType` groups expose different option sets), resolve the conflict per option group and keep the configuration visible — do not replace the panel with a generic conflict message. Resolve the effective selection's composition once, then apply one of three escalation rules per option group:
+
+- **Same config, partially compatible options** → show the union of both groups' options, but `disable` the ones that don't apply to every selected group ("show-all, enable-intersection").
+- **Options differ only in appearance** (icon; same request payload and semantics) → show the more common appearance.
+- **Completely incompatible options** → show both but `disable` all.
+
+Two invariants multi-select handling must not break:
+- existing inter-option mutual exclusion (e.g. Support type `None` disables Support raft);
+- opt-in groups: any group may be left unselected, and Save then reuses each model's existing value for that group instead of sending a default.
+
+Reference implementation: the RWC-4764 Supports panel (`resolveSupportsPanelComposition` / `resolveRaftAvailability`).
 
 ## Business-rule encapsulation (permanent convention)
 
