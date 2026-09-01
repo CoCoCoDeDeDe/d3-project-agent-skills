@@ -137,6 +137,7 @@ The general, repo-agnostic rule and the pre-commit scan live in `dev-conventions
 - A tool panel's options are the configuration for the ONE edit request its Save fires — they **never read or prefill from the models' persisted platform metadata**. Initial values are product defaults (e.g. raft defaults Off) or "no selection", never job data. This kills the "multi-selected models hold different values for the same option" display problem at the source.
 - Two boundaries: reading persisted data as the **edit target** (e.g. support points rendered in Edit supports) is fine; reading it for **availability gating** (e.g. `isSupported` gates editing) is fine. Forbidden only as option prefill.
 - Review check for new options: is the initial value a constant / none, or does it read job data? The latter is always rejected.
+- **Forward masked/effective state to Save, never raw state**: a panel that masks raw state into an effective value (composition/availability gates) must have every Save/request path send the EFFECTIVE value. A value a gate hides from the UI must never join a request — it would override persisted per-model state the gate exists to protect (RWC-4764: the style Save forwarded raw `raftChoice`, leaking a crown-gated `true` onto non-crown models).
 
 ## Tool panel multi-select conflict handling (permanent convention)
 
