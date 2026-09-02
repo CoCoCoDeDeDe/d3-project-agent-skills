@@ -1,6 +1,6 @@
 ---
 name: rwn-xstate-machines
-description: "RaywareNative (RWC 3.0) XState machine conventions: parallel-machine shadowing, live-read guards (no mirrors), event mounting levels and swallow interception, and the design questions to ask before changing a machine. Use when editing or reviewing interactionSystem.machine.ts or other XState machines in the RaywareNative repo — adding states/transitions/events/guards, wiring deps, or reviewing machine diffs. NOT for generic XState usage (xstate-interactions) or the Sketch paste/regeneration workflow (xstate-studio-sync-workflow)."
+description: 'RaywareNative (RWC 3.0) XState machine conventions: parallel-machine shadowing, live-read guards (no mirrors), event mounting levels and swallow interception, panel-machine gating-signal same-source, and the design questions to ask before changing a machine. Use when editing or reviewing interactionSystem.machine.ts or other XState machines in the RaywareNative repo — adding states/transitions/events/guards, wiring deps, or reviewing machine diffs. NOT for generic XState usage (xstate-interactions) or the Sketch paste/regeneration workflow (xstate-studio-sync-workflow).'
 ---
 
 # RaywareNative XState Machine Conventions
@@ -38,6 +38,7 @@ Rules:
 ## Naming is the interface
 
 - deps guard/action/event names are the interface between the machine file and the implementation layer — both sides stay in sync, including branch order.
+- **Panel ↔ machine gating signal, same source**: a "would this event be swallowed right now" predicate has ONE named source — the machine guard (e.g. `selectToolBlocked: or(['loading', 'dragging'])`). The panel mirrors the SAME name (`const selectToolBlocked = isLoading || isDragging`) and its effects read that one signal instead of re-deriving the machine's swallow guards inline (`!isLoading && !isDragging`). Never use `snapshot.can(...)` here: loading is external store state (not in the snapshot), so `can()` will not recompute when loading flips — the named selector is the re-trigger.
 - Machine-file Sketch compatibility (runtime imports only from `xstate`, no `enum`, non-xstate references via deps/type-only imports) and regenerating the paste version after structural changes: see `xstate-studio-sync-workflow`.
 - **Every deps member needs a consumer**: declare only what the machine's actions/guards (or an
   injected channel the machine names) actually use. A dead member (declared, never invoked) costs
