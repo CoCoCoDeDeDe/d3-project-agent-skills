@@ -35,6 +35,7 @@ npm run typecheck          # tsc node + web configs
 rm -rf out-tests && npm run test:unit    # stale compiled output runs ghost tests
 rm -f .eslintcache && npm run lint       # eslint --cache masks newly introduced errors
 npx prettier --check src --ignore-unknown   # exact CI command (check-frontend-format.yml)
+git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e00}-\x{9fff}]'   # English-only: must print nothing
 ```
 
 - `npx prettier --check src --ignore-unknown` is the **exact CI command**
@@ -61,7 +62,7 @@ Layout bugs evade typecheck/lint/unit tests — the ToolsPanel shrink chain took
 
 ## Comments
 
-- **English only** (project CLAUDE.md rule; automated review checks it).
+- **English only** (project CLAUDE.md rule). Before commit, run the CJK grep in *Verification commands* — it must print nothing. It scans added lines only and excludes `src/renderer/i18n/locales`, so pre-existing Chinese (mock fixtures, old comments) is not a violation; the automated review only catches a slip post-push.
 - **No ticket numbers or review references** (`RWC-1234`, "review finding X") in code comments — a comment must stand on business/logic alone. 2.0 references with `file:line` stay (they are business context).
 - Keep *why* comments: design rationale, gotchas and their root causes, 2.0 references with `file:line`, non-obvious parameter semantics/units, architecture conventions.
 - Delete *what* comments that restate the code, decorative section dividers, and stale comments describing removed behavior.
