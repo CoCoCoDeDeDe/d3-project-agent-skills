@@ -51,6 +51,17 @@ git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e0
 - **Flaky CI exists** (e.g. `fatal: shallow file has changed since we read it` on shallow fetches). Re-run the failed job first; only change the workflow if it fails repeatedly.
 - Large PRs: call out vendored/bulk files in the PR description so reviewers don't read the raw line count as hand-written code. Prefer reviewing commit-by-commit — keep commits atomic (one logical change per commit, `type(scope): summary`).
 
+## PR description
+
+Use the repo template (`.github/pull_request_template.md`) and keep it scannable:
+
+- **Card** — Jira link.
+- **Description** — one line: the user-facing change or technical purpose.
+- **What Have I Done** — one bullet per logical change, matching the final diff.
+- **Preview** — image/video, only for UI-touching PRs.
+
+Write it last, against `git diff origin/develop...HEAD`, not before coding — the bullets must not contradict the diff.
+
 ## Layout / constraint-chain changes (flex + fixed height + overflow)
 
 Layout bugs evade typecheck/lint/unit tests — the ToolsPanel shrink chain took three review rounds because each level was fixed reactively. Checklist before committing any bounded-container layout change:
