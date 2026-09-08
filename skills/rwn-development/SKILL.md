@@ -1,6 +1,6 @@
 ---
 name: rwn-development
-description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline, comment/test rules, no-magic-strings type discipline (closed value sets as enums, shared literals as constants), icon/i18n rules, tool-panel multi-select conflict handling, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
+description: RaywareNative (RWC 3.0) development conventions — verification commands, CI discipline (including no intermediate pushes to an open PR — each push triggers the AI code-review job), comment/test rules, no-magic-strings type discipline (closed value sets as enums, shared literals as constants), icon/i18n rules, tool-panel multi-select conflict handling, vendored assets, dual-runtime provider seams, XState Sketch sync. Use ONLY when working in the RaywareNative repository (RWC 3.0 codebase) — coding in renderer/services/stores/tests, before committing or pushing a branch or opening a PR there, or when CI checks (check-formatting / run-eslint / code-review) fail on a RaywareNative PR. NOT for RWC 2.0 / Design-Service or any other project — several rules are RaywareNative-specific.
 ---
 
 # RaywareNative (RWC 3.0) Development Conventions
@@ -46,6 +46,7 @@ git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e0
 
 ## CI discipline
 
+- **No intermediate pushes to an open PR.** Once a development branch's PR is open, stop pushing until the work is fully complete locally and ready for the overall review — every push triggers the CI AI code-review job, which burns company tokens on half-finished states and litters the PR page with intermediate-stage review comments that bury the real review. Accumulate commits locally (each verified per *Verification commands* before its commit) and push once, when the branch is review-ready. The only legitimate pushes after opening are review-fix rounds responding to findings already received — that is a new, intended review round, not an intermediate one. This rule does not change the verify-before-every-commit discipline: completion is judged locally, not by pushing to see what CI says.
 - **develop is green.** Any error your branch introduces fails CI — evaluate against the CI commands above, never against "it was already failing on my HEAD". A file your branch adds or touches must leave lint/format checks clean.
 - eslint **warnings** don't fail CI, but `prettier --check` fails on any formatting diff. Run `npx prettier --write` on touched files.
 - **Flaky CI exists** (e.g. `fatal: shallow file has changed since we read it` on shallow fetches). Re-run the failed job first; only change the workflow if it fails repeatedly.
