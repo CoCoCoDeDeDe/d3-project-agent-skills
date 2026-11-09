@@ -82,6 +82,13 @@ git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e0
 - **develop is green.** Any error your branch introduces fails CI — evaluate against the CI commands above, never against "it was already failing on my HEAD". A file your branch adds or touches must leave lint/format checks clean.
 - eslint **warnings** don't fail CI, but `prettier --check` fails on any formatting diff. Run `npx prettier --write` on touched files.
 - **Flaky CI exists** (e.g. `fatal: shallow file has changed since we read it` on shallow fetches). Re-run the failed job first; only change the workflow if it fails repeatedly.
+- **Wait for CI with the blocking waiter, never with a sleep loop.** `scripts/wait-ci.sh <pr>` (in this skill) blocks until every check on the PR's head commit reaches a terminal state and exits `0` all-pass / `1` failed / `2` timed out, then prints the per-check table:
+
+  ```bash
+  bash .dsh/skills/rwn-development/scripts/wait-ci.sh 391 SprintRay-Software/RaywareNative
+  ```
+
+  Launch it as a **background job** instead of a foreground call: the session is notified once, when it exits, so the wait costs no model turns. Use that time for the PR body, reading the diff for review, or the next branch. `sleep 60 && gh pr checks` re-enters the model every interval to learn nothing new, and on this machine's gh 2.4.0 there is no `gh pr checks --watch`/`--json` at all — the script talks to GraphQL directly.
 - Large PRs: call out vendored/bulk files in the PR description so reviewers don't read the raw line count as hand-written code. Prefer reviewing commit-by-commit — keep commits atomic (one logical change per commit, `type(scope): summary`).
 
 ## PR description

@@ -61,6 +61,26 @@ Cached linters/build tools (`eslint --cache`, incremental builds) mask newly int
   absent from the on-disk code. Restart the dev server (or hard-refresh) BEFORE treating the
   error as a code bug — verify against a freshly-started server, then investigate.
 
+## Waiting on long-running work: block in the background, never sleep-poll
+
+Some checks outlive a single tool call: CI pipelines, deploys, nightly builds. Waiting for them with
+`sleep N && <check>` costs a model turn per interval and learns nothing until the last one.
+
+- **Turn the wait into one blocking command, then run it as a background job.** The harness notifies
+  the session exactly once, when the command exits — a completion callback without a webhook and
+  without a polling loop in the model.
+- **Spend the wait on work that does not depend on the result**: the PR body, reading the diff,
+  the next branch, test scaffolding.
+- **Do not re-check the job between polls.** The exit notification is the signal; asking "is it done
+  yet" re-creates the polling that was just removed.
+- **The waiter itself may poll** — that is fine and invisible: one API call every 15–20 s inside a
+  single background process costs nothing in the conversation. What must not happen is the *model*
+  waking on a timer.
+- **If the platform can push instead of being polled** (a webhook, a file drop, a watch), prefer it;
+  but do not build a tunnelled receiver just to avoid a local blocking wait.
+- **A blocking waiter must end with a distinguishable outcome** (pass / fail / timeout), not merely
+  exit 0 when the work ends — otherwise the notification carries nothing to act on.
+
 ## Per-language check and format tools
 
 Pick by language; every commit must pass the fast tier, and push must pass the full tier:
