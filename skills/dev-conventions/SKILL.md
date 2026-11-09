@@ -1,26 +1,60 @@
 ---
 name: dev-conventions
-description: "Cross-repo, cross-language development discipline: verify BEFORE commit rather than before push, clear linter/build caches before verifying (stale caches mask new problems), the per-language check/format tool mapping, and no magic strings (closed value sets become enums, literals used in multiple places become shared constants). Use when committing code, when CI lint/format checks fail but local checks pass (stale cache), when unsure which formatter/linter a language uses, when asked to remove magic strings, use enums/constants, or clean up string-literal unions, or when setting up verification habits for a new project. Repo-specific command sets live in that repo's own skill (e.g. rwn-development for RaywareNative) — this skill holds the cross-repo discipline."
+description: "Cross-repo, cross-language development discipline: two-tier verification timing (a fast static tier after every change, the full suite with cleared caches before push), the per-language check/format tool mapping, and no magic strings (closed value sets become enums, literals used in multiple places become shared constants). Use when committing code, when deciding what to run after an edit versus before push, when CI lint/format checks fail but local checks pass (stale cache), when unsure which formatter/linter a language uses, when asked to remove magic strings, use enums/constants, or clean up string-literal unions, or when setting up verification habits for a new project. Repo-specific command sets live in that repo's own skill (e.g. rwn-development for RaywareNative) — this skill holds the cross-repo discipline."
 ---
 
 # General Development Conventions
 
 > Cross-repo, cross-language discipline. Repo-specific command sets live in that repo's own skill/AGENTS.md (e.g. `rwn-development` for RaywareNative); this file only covers the repo-independent part.
 
-## Verification timing: before every commit, not before push
+## Verification timing: a fast tier after every change, the full tier before push
 
-- Run the language's full verification (type check + lint + format) before **every commit**, not accumulated until push / PR time — the earlier you run it, the smaller the problem to localize and the cleaner the commit.
+A full pass after every edit is a bad trade. The expensive part is almost always the test suite: it
+recompiles its whole dependency graph and takes over a minute no matter how small the edit was,
+while the checks that localize errors precisely cost seconds. Split verification by cost into two
+tiers instead of choosing one moment for everything.
+
+**Fast tier — after every change (end of each working turn, and before each commit), tens of seconds:**
+
+- **Type/compile check.** Keep this in every tier: it is the only check whose diagnostic localizes
+  the error precisely, and it stays cheap thanks to OS file cache.
+- **Lint in cache mode** (`eslint --cache`). Order(s) of magnitude faster than a cold run, and for
+  ordinary source edits the cache is accurate.
+- **Format check** on the touched files, or on `src` when the repo's src is small enough.
+- **The cheap greps** — CJK-in-comments, magic-string scan, stale-comment scan. They cost
+  milliseconds, so run them at the earliest point rather than at push time.
+
+**Full tier — before push, and before opening or updating a PR, a couple of minutes:**
+
+- The fast tier, plus:
+- **Cold lint**: `rm -f .eslintcache && npm run lint`.
+- **The unit suite with stale output removed**: `rm -rf out-tests && npm run test:unit`.
+- **Format check on `tests`** as well, if the change touches tests.
+
+Promote a full-tier item into the fast tier whenever the change invalidates what the fast tier
+assumes:
+
+- the edit touches the cache's own inputs (eslint/prettier/tsconfig config, dependency versions,
+  plugin list) → cached lint/format proves nothing, run cold immediately;
+- the edit touches logic that unit tests cover (machines, services, parsers, pure helpers) → run
+  `test:unit` right there; discovering that failure at push time means rewriting commits.
+
+The rule both tiers serve: never let a whole class of check be seen for the first time at push. The
+fast tier keeps failures cheap to localize; the full tier keeps CI from telling you something you
+could have known locally.
+
 - "Run locally exactly what CI runs": first find out the CI command set and use the same one locally — never a "close enough" substitute.
 - eslint **warnings** may not fail CI, but any format diff (prettier --check style) fails — trust the tool's exit code, not feelings.
 
-## Cache traps: clear caches before committing by default
+## Cache traps: clear caches in the full tier, and whenever the cache could be stale
 
-Cached linters/build tools (`eslint --cache`, incremental builds) mask newly introduced problems with stale results. **Default rule: clear caches/stale artifacts before commit verification**, rather than waiting for CI to fail and reworking:
+Cached linters/build tools (`eslint --cache`, incremental builds) mask newly introduced problems with stale results. The fast tier deliberately uses those caches — that is where its speed comes from — so the rule is not "always clear" but **"know when the cache is trustworthy"**:
 
-- `rm -f .eslintcache && npm run lint` (real case: `.eslintcache` masked a new react-hooks rule error that only CI, without cache, exposed)
-- `rm -rf out-tests && npm run test:unit` (stale compiled output runs ghost tests)
-
-When local passes but CI fails, first suspect "did I verify against a cached result?", not the CI.
+- **The full tier always clears them**, rather than waiting for CI to fail and reworking:
+  - `rm -f .eslintcache && npm run lint` (real case: `.eslintcache` masked a new react-hooks rule error that only CI, without cache, exposed)
+  - `rm -rf out-tests && npm run test:unit` (stale compiled output runs ghost tests)
+- **Go cold immediately, mid-tier**, when the edit changes the cache's inputs: eslint/prettier/tsconfig config, dependency versions, plugin list, or a bulk generated-asset rename.
+- When local passes but CI fails, first suspect "did I verify against a cached result?", not the CI.
 
 - **Stale dev-server modules**: after multi-file changes (especially new exports), a long-running
   dev server can serve a mixed module graph (new consumer + old provider) that throws errors
@@ -29,7 +63,7 @@ When local passes but CI fails, first suspect "did I verify against a cached res
 
 ## Per-language check and format tools
 
-Pick by language; every commit must pass:
+Pick by language; every commit must pass the fast tier, and push must pass the full tier:
 
 | Language | Type/compile check | Lint | Format |
 |---|---|---|---|

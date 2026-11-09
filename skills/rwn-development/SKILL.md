@@ -23,30 +23,62 @@ description: RaywareNative (RWC 3.0) development conventions — verification co
   still depend on RWC 2.0 libraries (team-confirmed) — that dependency is why the dual-runtime
   provider seams below exist.
 
-## Verification commands (run all before every commit)
+## Verification commands (two tiers: fast after each change, full before push)
 
 See `dev-conventions` for the cross-repo discipline (verification timing, cache traps,
-per-language tool mapping); this is RWN's concrete command set. CI runs exactly these — run
-them locally and make them pass **before every commit**, with caches cleared by default (don't
-wait for CI to catch a stale-cache miss):
+per-language tool mapping); this is RWN's concrete command set. CI runs these — never substitute a
+"close enough" command.
+
+Measured on this workstation (2026-11, node 26, side worktree at develop, warm OS file cache for
+the repeated runs): a single full pass is ~165 s. `test:unit` alone is ~80–87 s (`tsc` recompiles
+the whole covered graph, so it has no incremental mode) and cold lint is ~45 s, while cached lint
+is ~1.5 s. That asymmetry is why the set is split in two tiers instead of run whole after every
+edit.
+
+**Fast tier — after every change (end of each working turn, and before each commit), ~35 s:**
 
 ```bash
-npm run typecheck          # tsc node + web configs
-rm -rf out-tests && npm run test:unit    # stale compiled output runs ghost tests
-rm -f .eslintcache && npm run lint       # eslint --cache masks newly introduced errors
-npx prettier --check src --ignore-unknown   # exact CI command (check-frontend-format.yml)
+npm run typecheck                          # 16 s, tsc node + web configs
+npm run lint                               # 1.5 s, reuses .eslintcache
+npx prettier --check src --ignore-unknown  # 16 s, exact CI command (check-frontend-format.yml)
 git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e00}-\x{9fff}]'   # English-only: must print nothing
 ```
 
-- `npx prettier --check src --ignore-unknown` is the **exact CI command**
-  (`check-frontend-format.yml`); CI guards only `src`. When a change also touches
-  `tests/`, run `npx prettier --check tests --ignore-unknown` as well — the session
-  convention checks both, and a formatting diff in tests is still a review failure.
-- **Magic-string scan**: typecheck/lint/prettier never catch semantic string literals — before committing, grep the diff for new handwritten `'...'` discriminator unions and literals repeated across files (closed sets → `enum`, shared literals → `const`). General rule + decision table in `dev-conventions`; RWN instances and scope discipline below.
+**Full tier — before push (and before opening/updating a PR), ~165 s:**
+
+```bash
+npm run typecheck
+rm -f .eslintcache && npm run lint         # 45 s cold: eslint --cache masks newly introduced errors
+npx prettier --check src --ignore-unknown
+npx prettier --check tests --ignore-unknown
+rm -rf out-tests && npm run test:unit      # 87 s cold: stale compiled output runs ghost tests
+git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e00}-\x{9fff}]'
+```
+
+- **Promote items into the fast tier when the change invalidates the shortcut**: touched
+  `eslint.config.*` / `.prettierrc*` / `tsconfig*.json` / dependency versions → cold lint and both
+  prettier checks now; touched machine/service/parser logic that `tests/unit` covers → run
+  `test:unit` in that same turn, since finding the failure at push time means rewriting commits.
+- **`prettier --check src` is the exact CI command** (`check-frontend-format.yml`); CI guards only
+  `src`. `tests/` is checked by the full tier only — a formatting diff in tests still fails review.
+- **Cheaper fast tier when the turn touched only a few files**: format-check just those files
+  instead of all of `src` (~1–2 s for a handful vs ~16 s for the tree) — keep the whole-tree run in
+  the full tier:
+
+  ```bash
+  { git diff --name-only HEAD --diff-filter=ACMR; git ls-files -o --exclude-standard; } \
+    | xargs -r npx prettier --check --ignore-unknown
+  ```
+
+  `git ls-files -o` matters: new untracked files are exactly the ones a diff-based list would miss.
+- **Magic-string scan** (fast tier, milliseconds): typecheck/lint/prettier never catch semantic
+  string literals — grep the diff for new handwritten `'...'` discriminator unions and literals
+  repeated across files (closed sets → `enum`, shared literals → `const`). General rule + decision
+  table in `dev-conventions`; RWN instances and scope discipline below.
 
 ## CI discipline
 
-- **No intermediate pushes to an open PR.** Once a development branch's PR is open, stop pushing until the work is fully complete locally and ready for the overall review — every push triggers the CI AI code-review job, which burns company tokens on half-finished states and litters the PR page with intermediate-stage review comments that bury the real review. Accumulate commits locally (each verified per *Verification commands* before its commit) and push once, when the branch is review-ready. The only legitimate pushes after opening are review-fix rounds responding to findings already received — that is a new, intended review round, not an intermediate one. This rule does not change the verify-before-every-commit discipline: completion is judged locally, not by pushing to see what CI says.
+- **No intermediate pushes to an open PR.** Once a development branch's PR is open, stop pushing until the work is fully complete locally and ready for the overall review — every push triggers the CI AI code-review job, which burns company tokens on half-finished states and litters the PR page with intermediate-stage review comments that bury the real review. Accumulate commits locally (each verified by the fast tier before its commit, the full tier before the push) and push once, when the branch is review-ready. The only legitimate pushes after opening are review-fix rounds responding to findings already received — that is a new, intended review round, not an intermediate one. This rule does not change the verify-before-push discipline: completion is judged locally, not by pushing to see what CI says.
 - **develop is green.** Any error your branch introduces fails CI — evaluate against the CI commands above, never against "it was already failing on my HEAD". A file your branch adds or touches must leave lint/format checks clean.
 - eslint **warnings** don't fail CI, but `prettier --check` fails on any formatting diff. Run `npx prettier --write` on touched files.
 - **Flaky CI exists** (e.g. `fatal: shallow file has changed since we read it` on shallow fetches). Re-run the failed job first; only change the workflow if it fails repeatedly.
@@ -84,7 +116,7 @@ Layout bugs evade typecheck/lint/unit tests — the ToolsPanel shrink chain took
 Every shared component under `src/renderer/components/` (incl. `components/ui/`) ships a `README.md` in its folder — precedent format: `Button`/`Chip`/`Select` (short description, usage example, props table, style-override notes, Figma sources).
 
 - **Add it in the same branch that adds the component**, not a follow-up.
-- **Sync it before every commit that changes the component** (props, variants, behavior) — a stale README is treated like a stale comment.
+- **Sync it in the same commit that changes the component** (props, variants, behavior) — a stale README is treated like a stale comment.
 - `prettier --check` covers Markdown — write, then `npx prettier --write` the README before committing.
 - Business composites under `pages/` are exempt; the rule targets the reusable public surface.
 

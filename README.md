@@ -13,8 +13,8 @@
 | `xstate-interactions` | XState v5 状态机手册:v5-only 语法规则、@xstate/react 集成铁律、Babylon 交互 actor 模式(observers 只发事件,machine actions 只写场景)。 |
 | `rwn-xstate-machines` | RaywareNative(RWC 3.0)的 XState 机器开发规范:parallel shadowing 陷阱、守卫实时读 store、swallow 拦截、设计三问。 |
 | `xstate-studio-sync-workflow` | RaywareNative 的 XState 实现 ↔ Stately Sketch 同步工作流:Sketch 脚本模式约束、粘贴版生成器、命名即接口、一致性核对清单。 |
-| `rwn-development` | RaywareNative(RWC 3.0)开发规范:验证命令集、CI 纪律、注释/测试/icon/i18n 规则、双 runtime seam、XState Sketch 同步。 |
-| `dev-conventions` | 跨仓库/跨语言通用开发纪律:commit 前验证、缓存陷阱、各语言检查工具映射。 |
+| `rwn-development` | RaywareNative(RWC 3.0)开发规范:两档验证命令集(改动后快档 / push 前全量)、CI 纪律、注释/测试/icon/i18n 规则、双 runtime seam、XState Sketch 同步。 |
+| `dev-conventions` | 跨仓库/跨语言通用开发纪律:两档验证时机(每次改动跑快档、push 前清缓存跑全量)、缓存陷阱、各语言检查工具映射。 |
 | `git-stacked-branches` | Squash 合并 + 栈式分支工作流:父 PR 合入后子分支冲突机理与处理、本地/远程/worktree checkout 陷阱。 |
 | `skill-creator` | Skill creation, evaluation and optimization workflow (create → test → review → improve loop, trigger-description optimization via `kimi -p`). Adapted from [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/skill-creator) for Kimi Code. |
 | `lambda-deploy` | (预留)AWS Lambda 部署工作手册,待实现。 |
