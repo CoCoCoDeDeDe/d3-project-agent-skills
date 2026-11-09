@@ -91,6 +91,29 @@ git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e0
   Launch it as a **background job** instead of a foreground call: the session is notified once, when it exits, so the wait costs no model turns. Use that time for the PR body, reading the diff for review, or the next branch. `sleep 60 && gh pr checks` re-enters the model every interval to learn nothing new, and on this machine's gh 2.4.0 there is no `gh pr checks --watch`/`--json` at all — the script talks to GraphQL directly.
 - Large PRs: call out vendored/bulk files in the PR description so reviewers don't read the raw line count as hand-written code. Prefer reviewing commit-by-commit — keep commits atomic (one logical change per commit, `type(scope): summary`).
 
+## Stack progression: wait for the merge instead of being told
+
+A stacked branch's next step is gated on a human merge: reviewers approve, the developer
+squash-merges the bottom PR by hand, and only then can the child be rebased. Track that with
+`scripts/wait-merge.sh <pr>...` (in this skill) run as a **dsh background job**:
+
+```bash
+bash .dsh/skills/rwn-development/scripts/wait-merge.sh \
+  --repo SprintRay-Software/RaywareNative 388 389 390 391
+```
+
+- One GraphQL query per poll covers every listed PR. The job logs `state/review` transitions and
+  exits `0` when any listed PR merges, `1` when all are closed without merging, `2` on timeout
+  (default 12 h, `--timeout`).
+- The job notifies only on exit, so an approval that has not been merged yet shows up in its log but
+  does not wake the session — start a separate job if a different event is the one you need, rather
+  than polling by hand.
+- On wake, the first move is the child PR, not the child's code: its base must be retargeted to
+  `develop` and its branch rebased (see `git-stacked-branches`). The exit table names the PR whose
+  merge landed, which is the parent that changed.
+- Never ask the developer "did you merge it?" and never poll the conversation for it — that is the
+  turn-burning loop this job removes.
+
 ## PR description
 
 Use the repo template (`.github/pull_request_template.md`) and keep it scannable:
