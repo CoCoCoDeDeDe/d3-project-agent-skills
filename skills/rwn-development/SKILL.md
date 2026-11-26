@@ -88,7 +88,14 @@ git diff HEAD -U0 -- . ':!src/renderer/i18n/locales' | grep -P '^\+[^+].*[\x{4e0
   bash .dsh/skills/rwn-development/scripts/wait-ci.sh 391 SprintRay-Software/RaywareNative
   ```
 
-  Launch it as a **background job** instead of a foreground call: the session is notified once, when it exits, so the wait costs no model turns. Use that time for the PR body, reading the diff for review, or the next branch. `sleep 60 && gh pr checks` re-enters the model every interval to learn nothing new, and on this machine's gh 2.4.0 there is no `gh pr checks --watch`/`--json` at all — the script talks to GraphQL directly.
+  Launch it as a **background job** instead of a foreground call: the session is notified once, when it exits, so the wait costs no model turns. **Never call `job_output` with `wait: true` on it** — launch it, report the job id and current check status, and end the turn; the job's exit wakes the session, while a blocking read freezes the conversation (on dsh 0.2.1 a user message does not interrupt a waiting job call). Use that time for the PR body, reading the diff for review, or the next branch. `sleep 60 && gh pr checks` re-enters the model every interval to learn nothing new, and on this machine's gh 2.4.0 there is no `gh pr checks --watch`/`--json` at all — the script talks to GraphQL directly.
+- **A green `code-review` check is not an approval.** The check only says the review job ran to completion; the same run can have posted `CHANGES_REQUESTED` with inline findings. `scripts/wait-ci.sh` now ends with a review verdict, so after it exits read the last section: `reviewDecision` and `unresolved review threads`. Never report "no AI review issues" off a green check alone.
+  - `reviewDecision: CHANGES_REQUESTED`, or a non-empty unresolved list → treat every thread as a finding: fix it, push, then resolve the thread immediately so the next review round does not re-raise it:
+    ```bash
+    gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread-id>
+    ```
+    `wait-ci.sh` prints each unresolved thread's id in brackets next to its path and first line. If the code already changed such that a thread is `isOutdated` and no longer applies, resolve it too instead of leaving it open.
+  - `reviewDecision: APPROVED` with zero unresolved threads is the only combination that means "clear". `reviewDecision: NONE` means no verdict yet (comments only) — read the inline comments before concluding anything.
 - Large PRs: call out vendored/bulk files in the PR description so reviewers don't read the raw line count as hand-written code. Prefer reviewing commit-by-commit — keep commits atomic (one logical change per commit, `type(scope): summary`).
 
 ## Stack progression: wait for the merge instead of being told
@@ -113,10 +120,20 @@ bash .dsh/skills/rwn-development/scripts/wait-merge.sh \
   merge landed, which is the parent that changed.
 - Never ask the developer "did you merge it?" and never poll the conversation for it — that is the
   turn-burning loop this job removes.
+- **Launch it and end the turn.** Never call `job_output` with `wait: true` on this job either: a
+  blocking read freezes the conversation, while the job's exit wakes the session by itself. Same
+  rule for every dsh background job — `wait: false` only.
 
-## PR description
+## PR title and description
 
-Use the repo template (`.github/pull_request_template.md`) and keep it scannable:
+The PR **title must be the source branch name verbatim** (e.g.
+`RWC-sprint-63/RWC-4754-3d-renderer-page-general-14`) — never a ticket-prefixed summary such as
+`RWC-4754: <description>`. The same convention holds in RWC 2.0. The branch name already carries the
+ticket and the scope, so the title is not a second place to restate them. `gh pr create` derives the
+title from the head branch only when `--title` is omitted, so passing `--title` explicitly is how
+this gets broken — check the result with `gh pr view <n> --json title`.
+
+Use the repo template (`.github/pull_request_template.md`) and keep the body scannable:
 
 - **Card** — Jira link.
 - **Description** — one line: the user-facing change or technical purpose.
